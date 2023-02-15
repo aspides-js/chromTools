@@ -45,7 +45,7 @@ def run( options ):
 	start_time = time.time()
 	print('Downsampling...')
 	print("CPU number: "+str(mp.cpu_count()))
-	pool = mp.Pool(processes=1)
+	pool = mp.Pool()
 	args = [(n, options, total) for n in range(1,nfile)] # nfile should be number calculated by wc()
 	r = {} # initiate empty dictionary
 	for res in pool.starmap(downsample, args):
@@ -137,8 +137,6 @@ def downsample(n, options, total):
 	outfile = options.subdir+'downsampled.'+str(n)+'.bed'
 	reads = 0
 	a=params(proportion)
-	#print("proportion is")
-	#print(a)
 	with open(outfile, 'w') as outf:
 		with open(options.subdir+"downsampled.0.bed",'r') as f:
 			for line in f:
@@ -150,14 +148,13 @@ def downsample(n, options, total):
 	if options.paired:
 		reads=reads/2
 	return str(n), reads
-	# which is the read number??
 
 #--------------------------------------------------------------------------------#
 
 def metafile_write(metadir, n):
-	'''
+	"""
 	Creates the text file with specified input downsampled files for ChromHMM binarisation
-	'''
+	"""
 	with open(metadir+"cellMarkBedFile."+n+".txt", "w") as outf:
 		outf.write("cell\tmark\tdownsampled."+n+".bed")  
 
@@ -228,25 +225,43 @@ def param_write(r, outdir):
 def param_plot(r, outdir):
 	df = pd.DataFrame(r)
 	plt.figure(figsize=(10,6), tight_layout=True)
-	plt.plot(df.loc[1].tolist(), df.loc[2].tolist(), 'gs-')
+	plt.plot(df.loc[1].tolist(), df.loc[2].tolist(), 's-')
 	plt.xlabel('Number of Reads')
 	plt.ylabel('Proportion of marks')
 	plt.savefig(outdir+'/completeplot.jpg')
+
+	mm(df, outdir)
 
 
 #-------------------------------------------------------------------------------#
 
 def v(s, Vm, Km):
-    return (Vm * s) / (Km + s)
+	return (Vm * s) / (Km + s)
 
-def residuals(p, data[0], data[1]):
+def residuals(p, x, y):
 	Vm = p['Vm']
 	Km = p['Km']
-	fi = v(data[0], Vm, Km)
-	return data[1] - fi
+	fi = v(x, Vm, Km)
+	return y - fi
 
-params = lmfit.Parameters()
-params.add('Vm', value = 1, min=0, max=1000000000)
-params.add('Km', value = 1, min=0, max=1000000000)
+def mm(df, outdir):
+	data = np.array(df)
 
-result = lmfit.minimize(residuals, params, args(data[0], data[1]))
+	params = lmfit.Parameters()
+	params.add('Vm', value = 1, min=0, max=5000000000)
+	params.add('Km', value = 1, min=0, max=5000000000)
+
+	result = lmfit.minimize(residuals, params, args=(data[0], data[1]))
+
+	fm= np.linspace(0, max(data[0]), 100)
+	plt.figure(figsize=(10,6), tight_layout=True)
+	plt.scatter(df.loc[1].tolist(), df.loc[2].tolist(), color = 'k')
+	plt.plot(fm, v(fm, result.params['Vm'].value, result.params['Km'].value), 'k')
+	plt.xlabel('[S] (reads)')
+	plt.ylabel('v (proportion)')
+	plt.axhline(y = result.params['Vm'].value, linestyle = '-')
+	plt.title(label = 'Vm: '+str(result.params['Vm'].value))
+	plt.savefig(outdir+'/mmplot.jpg')
+
+	with open(outdir+"/mm.txt", 'w') as f:
+		f.write(str(result.params['Vm'].value)+"\t"+str(result.params['Km'].value))
