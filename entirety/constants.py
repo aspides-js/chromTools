@@ -1,0 +1,16 @@
+COMPLETE_VERSION = "1.0"
+GENOME = {"ce10":"ce10.txt",
+			"ce11":"ce11.txt",
+			"ce6":"ce6.txt",
+			"danRer10":"danRer10.txt",
+			"danRer11":"danRer11.txt",
+			"danRer7":"danRer7.txt",
+			"dm3":"dm3.txt",
+			"dm6":"dm6.txt",
+			"hg18":"hg18.txt",
+			"hg19":"hg19.txt",
+			"hg38":"hg38.txt",
+			"mm10":"mm10.txt",
+			"mm9":"mm9.txt",
+			"rn5":"rn5.txt",
+			"rn6":"rn6.txt"}
