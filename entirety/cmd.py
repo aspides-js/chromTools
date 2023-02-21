@@ -39,29 +39,30 @@ def run( options ):
 	bindir = options.bindir
 	increment = options.increment
 
-	cat_bed( options.files, options.subdir )
-	total, nfile = wc( options.increment, options.subdir )
+
+	cat_bed( options.files, options.subdir, options.info)
+	total, nfile = wc( options.increment, options.subdir, options.info )
 
 	start_time = time.time()
-	print('Downsampling...')
-	print("CPU number: "+str(mp.cpu_count()))
+	options.info('Downsampling...')
+	options.info("CPU number: "+str(mp.cpu_count()))
+	'''
 	pool = mp.Pool()
 	args = [(n, options, total) for n in range(1,nfile)] # nfile should be number calculated by wc()
 	r = {} # initiate empty dictionary
 	for res in pool.starmap(downsample, args):
 		r.setdefault(res[0], [])
 		r[res[0]].append(res[1])
-	print("--- %s seconds ---" % (time.time() - start_time))
+	options.info("--- %s seconds ---" % (time.time() - start_time))
 	
 	args = [(n, options) for n in range(nfile)] # redefine args so the downsampled.0.bed is included
 
-	print('Binarising...')
+	options.info('Binarising...')
 	r['0']=[total]
 	for res in pool.starmap(binarise, args):
 		r.setdefault(res[0], [])
 		r[res[0]].append(res[1])
-	print(r)
-	print("--- %s seconds ---" % (time.time() - start_time))
+	options.info("--- %s seconds ---" % (time.time() - start_time))
 	pool.close()
 
 	param_write(r, options.outdir)
@@ -69,15 +70,15 @@ def run( options ):
 	
 	print('Complete')
 	print(r)
-	
+	'''
 
 #--------------------------------------------------------------------------------#
 
-def cat_bed(files, subdir):
+def cat_bed(files, subdir, info):
 	'''
 	Concatenate compressed or uncompressed files into downsampled.0.bed
 	'''
-	print("Concatenating files...")
+	info("Concatenating files...")
 	start_time = time.time()
 	with open(subdir+"downsampled.0.bed",'wb') as wfd:
 		for f in files:
@@ -88,15 +89,15 @@ def cat_bed(files, subdir):
 			else:
 				with open(f,'rb') as fd:
 					shutil.copyfileobj(fd, wfd)
-	print("--- %s seconds ---" % (time.time() - start_time))
+	info("--- %s seconds ---" % (time.time() - start_time))
 
 
 
-def wc(increment, subdir):
+def wc(increment, subdir, info):
 	start_time = time.time()
-	print("Calculating total read number...")
+	info("Calculating total read number...")
 	total = int(check_output(["wc", "-l", subdir+"downsampled.0.bed"]).split()[0])/2
-	print("--- %s seconds ---" % (time.time() - start_time))
+	info("--- %s seconds ---" % (time.time() - start_time))
 	return total, int(total/increment)
 
 #--------------------------------------------------------------------------------#
@@ -209,7 +210,7 @@ def binarise(n, options):
 	if not os.path.exists(options.bindir+ndir):
 		os.mkdir(options.bindir+ndir)
 
-	os.system("java -mx2400M -jar "+options.chromhmmJar+" BinarizeBed -b 200 "+options.genome+" "+options.subdir+" "+options.metadir+"cellMarkBedFile."+n+".txt "+options.bindir+ndir)
+	subprocess.run("java -mx2400M -jar "+options.chromhmmJar+" BinarizeBed -b 200 "+options.genome+" "+options.subdir+" "+options.metadir+"cellMarkBedFile."+n+".txt "+options.bindir+ndir)
 	res = count_mark(ndir, n, options.bindir, options.region)
 	return res
 
