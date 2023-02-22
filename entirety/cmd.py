@@ -10,12 +10,15 @@ import shutil
 import gzip as gz
 from subprocess import check_output
 import multiprocessing as mp
-import matplotlib.pyplot as plt
-import pandas as pd
-import mmh3
+#import matplotlib.pyplot as plt
+#import pandas as pd
+#import mmh3
 
 import logging
 
+from MACS3.Signal.PeakDetect import PeakDetect
+from MACS3.IO.Parser import BEDParser, BEDPEParser
+from MACS3.Commands.callpeak_cmd import load_frag_files_options
 
 # ------------------------------------
 # own python modules
@@ -46,9 +49,23 @@ def run( options ):
 	start_time = time.time()
 	options.info('Downsampling...')
 	options.info("CPU number: "+str(mp.cpu_count()))
+
+
+	pool = mp.Pool()
+	args = [(n, options) for n in range(1,nfile)] # nfile should be number calculated by wc()
+	pool.starmap(use_macs, args)
+
+
+	#peakdetect = use_macs(options)
+	options.info("--- %s seconds ---" % (time.time() - start_time))
+	pool.close()
+
+
+
 	'''
 	pool = mp.Pool()
 	args = [(n, options, total) for n in range(1,nfile)] # nfile should be number calculated by wc()
+
 	r = {} # initiate empty dictionary
 	for res in pool.starmap(downsample, args):
 		r.setdefault(res[0], [])
@@ -71,6 +88,81 @@ def run( options ):
 	print('Complete')
 	print(r)
 	'''
+
+
+def use_macs( n,  options ):
+	options.verbose = False
+	options.tfile = [options.subdir+'/downsampled.'+str(n)+'.bed']
+	options.name = "P0"+str(n)
+	options.cfile = False
+
+	options.parser = BEDPEParser
+	options.buffer_size = 100000
+
+	(treat, control) = load_frag_files_options (options)
+
+	t0 = treat.total
+	t1 = t0
+
+	options.d = options.tsize
+
+	options.PE_MODE = True
+
+	options.log_qvalue = 5e-2
+	options.log_pvalue = None
+
+	options.maxgap = False
+	options.minlen = False
+
+
+	options.shift = False
+	options.gsize = 2.9e9
+
+	options.nolambda = False
+	options.smalllocal = 1000
+	options.largelocal = 10000
+
+
+
+	peakdetect = PeakDetect(treat = treat,
+							control = control,
+							opt = options
+							)
+
+	options.store_bdg = False
+
+
+	#options.name = "NA"
+
+	# output filenames
+	options.peakBed = os.path.join( options.outdir, options.name+"_peaks.bed" )
+	options.summitbed = os.path.join( options.outdir, options.name+"_summits.bed" )
+	options.bdg_treat = os.path.join( options.outdir, options.name+"_treat_pileup.bdg" ) #
+	options.bdg_control= os.path.join( options.outdir, options.name+"_control_lambda.bdg" ) #
+
+	options.do_SPMR = False
+	options.cutoff_analysis = False
+	options.cutoff_analysis_file = "None"
+
+	options.call_summits = False
+	options.trackline = False
+	options.broad = False
+
+
+	peakdetect.call_peaks()
+
+
+	if options.log_pvalue != None:
+		score_column = "pscore"
+	elif options.log_qvalue != None:
+		score_column = "qscore"
+
+	ofhd_bed = open( options.peakBed, "w" )
+	peakdetect.peaks.write_to_narrowPeak (ofhd_bed, name_prefix=b"%s_peak_", name=options.name.encode(), score_column=score_column, trackline=options.trackline )
+	ofhd_bed.close()
+
+
+
 
 #--------------------------------------------------------------------------------#
 
@@ -210,7 +302,7 @@ def binarise(n, options):
 	if not os.path.exists(options.bindir+ndir):
 		os.mkdir(options.bindir+ndir)
 
-	subprocess.run("java -mx2400M -jar "+options.chromhmmJar+" BinarizeBed -b 200 "+options.genome+" "+options.subdir+" "+options.metadir+"cellMarkBedFile."+n+".txt "+options.bindir+ndir)
+	subprocess.run(["java -mx2400M -jar "+options.chromhmmJar+" BinarizeBed -b 200 "+options.genome+" "+options.subdir+" "+options.metadir+"cellMarkBedFile."+n+".txt "+options.bindir+ndir])
 	res = count_mark(ndir, n, options.bindir, options.region)
 	return res
 
@@ -266,3 +358,6 @@ def mm(df, outdir):
 
 	with open(outdir+"/mm.txt", 'w') as f:
 		f.write(str(result.params['Vm'].value)+"\t"+str(result.params['Km'].value))
+
+#-------------------------------------------------------------------------------#
+
