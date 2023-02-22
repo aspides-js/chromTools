@@ -46,7 +46,7 @@ def run( options ):
 	start_time = time.time()
 	options.info('Downsampling...')
 	options.info("CPU number: "+str(mp.cpu_count()))
-	'''
+
 	pool = mp.Pool()
 	args = [(n, options, total) for n in range(1,nfile)] # nfile should be number calculated by wc()
 	r = {} # initiate empty dictionary
@@ -70,7 +70,7 @@ def run( options ):
 	
 	print('Complete')
 	print(r)
-	'''
+
 
 #--------------------------------------------------------------------------------#
 
@@ -141,7 +141,7 @@ def downsample(n, options, total):
 	with open(outfile, 'w') as outf:
 		with open(options.subdir+"downsampled.0.bed",'r') as f:
 			for line in f:
-				if (hashDiscard(a, options.seed, line)):
+				if (discard(a, options.seed, line)):
 					continue
 				else:
 					outf.write(line)
@@ -210,7 +210,7 @@ def binarise(n, options):
 	if not os.path.exists(options.bindir+ndir):
 		os.mkdir(options.bindir+ndir)
 
-	subprocess.run("java -mx2400M -jar "+options.chromhmmJar+" BinarizeBed -b 200 "+options.genome+" "+options.subdir+" "+options.metadir+"cellMarkBedFile."+n+".txt "+options.bindir+ndir)
+	os.system("java -mx2400M -jar "+options.chromhmmJar+" BinarizeBed -b 200 "+options.genome+" "+options.subdir+" "+options.metadir+"cellMarkBedFile."+n+".txt "+options.bindir+ndir)
 	res = count_mark(ndir, n, options.bindir, options.region)
 	return res
 
