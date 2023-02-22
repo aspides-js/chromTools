@@ -65,7 +65,7 @@ def main():
 	# Validate arguments
 	options = args_validator( args )
 	cmd.run( options )
-	print('Complete')
+	options.info('Complete')
 
 
 if __name__ == "__main__":
