@@ -54,7 +54,7 @@ def main():
 				help = "Directory where output files are written to. If unspecified files will be written to the current working directory")
 	argparser.add_argument("-g", "--genome", type=str, default='hg38')
 	argparser.add_argument('-s','--seed', type=str, help = "Random seed")
-	argparser.add_argument('--paired', default = False, action = "store_true", 
+	argparser.add_argument('--paired', dest = 'paired', default = False, action = "store_true", 
 				help = "Specify whether the input data is paired or unpaired. Default is FALSE")
 	argparser.add_argument('--region', type=str, default = '')
 	argparser.add_argument('--force-overwrite', dest = "force", default = False, action = "store_true",
