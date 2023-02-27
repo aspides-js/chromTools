@@ -15,6 +15,7 @@ import logging
 # ------------------------------------
 
 from entirety.constants import GENOME as gnm
+from MACS3.IO.Parser import BEDParser, BEDPEParser
 
 # ------------------------------------
 # Misc function
@@ -44,6 +45,7 @@ def args_validator( options ):
 	else:
 		raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), options.chromhmm +'ChromHMM.jar' )
 	
+
 	## genome
 	try:
 		options.genome = options.chromhmm+"CHROMSIZES/"+gnm[options.genome]
@@ -89,8 +91,11 @@ def args_validator( options ):
 	else:
 		options.info('RANDOM SEED: '+str(options.seed))
 
+	## paired
+	options.info("PE_MODE: %s" % options.paired)
 
 	return options
+
 
 def assert_compressed(f):
 	try:
@@ -98,3 +103,62 @@ def assert_compressed(f):
 		return False
 	except:
 		return True
+
+
+def macs_validator( n, options ):
+	''' 
+	Set options for macs binarisation/peak calling
+	'''
+
+	## logging
+	logging.getLogger().setLevel(30)
+
+	options.error = logging.critical
+	options.warn = logging.warning
+	options.debug = logging.debug
+	options.info = logging.info
+
+	if (len(str(n)) < 2):
+		nname = "0"+str(n)
+	else:
+		nname = str(n)
+
+
+	## load_frag_files_options
+	options.tfile = [options.subdir+'/downsampled.'+str(n)+'.bed']
+	options.name = "P0"+nname
+	options.cfile = False
+	options.parser = BEDPEParser
+	options.buffer_size = 100000
+
+	## peakdetect options
+	options.PE_MODE = options.paired
+	options.log_qvalue = 5e-2
+	options.log_pvalue = None
+	options.maxgap = False
+	options.minlen = False
+	options.shift = False
+	options.gsize = 2.9e9
+	options.gsize = 10050000
+	options.nolambda = False 
+	options.smalllocal = 1000
+	options.largelocal = 10000
+
+	## call_peaks options
+	options.store_bdg = False
+	options.do_SPMR = False
+	options.cutoff_analysis = False
+	options.cutoff_analysis_file = "None"
+	options.call_summits = False
+	options.trackline = False
+	options.broad = False
+
+	# output filenames
+	options.peakBed = os.path.join( options.outdir, options.name+"_peaks.bed" ) 
+	options.bdg_treat = os.path.join( options.outdir, options.name+"_treat_pileup.bdg" ) 
+	options.bdg_control= os.path.join( options.outdir, options.name+"_control_lambda.bdg" )
+
+	options.fecutoff = 1.0
+
+	return options
+

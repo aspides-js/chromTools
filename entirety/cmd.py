@@ -10,9 +10,11 @@ import shutil
 import gzip as gz
 from subprocess import check_output
 import multiprocessing as mp
-#import matplotlib.pyplot as plt
-#import pandas as pd
-#import mmh3
+import matplotlib.pyplot as plt
+import pandas as pd
+import numpy as np
+import lmfit
+import mmh3
 
 import logging
 
@@ -24,7 +26,7 @@ from MACS3.Commands.callpeak_cmd import load_frag_files_options
 # own python modules
 # ------------------------------------
 
-from entirety.validate import assert_compressed
+from entirety.validate import assert_compressed, macs_validator
 
 # ------------------------------------
 # Main function
@@ -50,19 +52,7 @@ def run( options ):
 	options.info('Downsampling...')
 	options.info("CPU number: "+str(mp.cpu_count()))
 
-
-	pool = mp.Pool()
-	args = [(n, options) for n in range(1,nfile)] # nfile should be number calculated by wc()
-	pool.starmap(use_macs, args)
-
-
-	#peakdetect = use_macs(options)
-	options.info("--- %s seconds ---" % (time.time() - start_time))
-	pool.close()
-
-
-
-	'''
+	
 	pool = mp.Pool()
 	args = [(n, options, total) for n in range(1,nfile)] # nfile should be number calculated by wc()
 
@@ -71,98 +61,72 @@ def run( options ):
 		r.setdefault(res[0], [])
 		r[res[0]].append(res[1])
 	options.info("--- %s seconds ---" % (time.time() - start_time))
-	
-	args = [(n, options) for n in range(nfile)] # redefine args so the downsampled.0.bed is included
 
-	options.info('Binarising...')
+
+	options.info('Macs binarising...')
+	#options = macs_validator( options )
+	args = [(n, options) for n in range(0,nfile)] # nfile should be number calculated by wc()
+
 	r['0']=[total]
-	for res in pool.starmap(binarise, args):
+	for res in pool.starmap(use_macs, args):
 		r.setdefault(res[0], [])
 		r[res[0]].append(res[1])
 	options.info("--- %s seconds ---" % (time.time() - start_time))
-	pool.close()
 
+	print(r)
 	param_write(r, options.outdir)
 	param_plot(r, options.outdir)
 	
 	print('Complete')
 	print(r)
-	'''
+	
 
 
 def use_macs( n,  options ):
-	options.verbose = False
-	options.tfile = [options.subdir+'/downsampled.'+str(n)+'.bed']
-	options.name = "P0"+str(n)
-	options.cfile = False
-
-	options.parser = BEDPEParser
-	options.buffer_size = 100000
+	options = macs_validator(n, options)
 
 	(treat, control) = load_frag_files_options (options)
 
 	t0 = treat.total
 	t1 = t0
-
 	options.d = options.tsize
 
-	options.PE_MODE = True
-
-	options.log_qvalue = 5e-2
-	options.log_pvalue = None
-
-	options.maxgap = False
-	options.minlen = False
-
-
-	options.shift = False
-	options.gsize = 2.9e9
-
-	options.nolambda = False
-	options.smalllocal = 1000
-	options.largelocal = 10000
-
-
-
-	peakdetect = PeakDetect(treat = treat,
-							control = control,
-							opt = options
-							)
-
-	options.store_bdg = False
-
-
-	#options.name = "NA"
-
-	# output filenames
-	options.peakBed = os.path.join( options.outdir, options.name+"_peaks.bed" )
-	options.summitbed = os.path.join( options.outdir, options.name+"_summits.bed" )
-	options.bdg_treat = os.path.join( options.outdir, options.name+"_treat_pileup.bdg" ) #
-	options.bdg_control= os.path.join( options.outdir, options.name+"_control_lambda.bdg" ) #
-
-	options.do_SPMR = False
-	options.cutoff_analysis = False
-	options.cutoff_analysis_file = "None"
-
-	options.call_summits = False
-	options.trackline = False
-	options.broad = False
-
-
+	peakdetect = PeakDetect(treat = treat, control = control, opt = options)
 	peakdetect.call_peaks()
 
+	# filter out low fe peaks
+	peakdetect.peaks.filter_fc( fc_low = options.fecutoff )
 
-	if options.log_pvalue != None:
-		score_column = "pscore"
-	elif options.log_qvalue != None:
-		score_column = "qscore"
 
 	ofhd_bed = open( options.peakBed, "w" )
-	peakdetect.peaks.write_to_narrowPeak (ofhd_bed, name_prefix=b"%s_peak_", name=options.name.encode(), score_column=score_column, trackline=options.trackline )
+	peakdetect.peaks.write_to_narrowPeak (ofhd_bed, name_prefix=b"%s_peak_", name=options.name.encode(), score_column="qscore", trackline=False )
 	ofhd_bed.close()
+	
+	return str(n), count_peakmark( options )
 
 
+def count_peakmark( options ):
+	g = chr_len(options.genome)
+	with open(options.peakBed, "r") as f:
+		for line in f:
+			chrom = line.split('\t')[0]
+			num = int(line.split('\t')[2]) - int(line.split('\t')[1])
+			g[chrom].append(num)
 
+	if 0 in [sum(x[1:]) for x in g.values()]:
+		options.warn("0 values in chromosome peak count may indicate incorrect chromosome length file.")
+
+	return (sum([sum(x[1:]) for x in g.values()]))/(sum([x[0] for x in g.values()])) #sum of counted peaks / total chromosome length
+
+
+def chr_len(genome):
+	g = {}
+	with open(genome) as f:
+		for line in f:
+			(key, val) = line.split()
+			g.setdefault(key, [])
+			g[key].append(int(val))
+	return g
 
 #--------------------------------------------------------------------------------#
 
@@ -233,7 +197,7 @@ def downsample(n, options, total):
 	with open(outfile, 'w') as outf:
 		with open(options.subdir+"downsampled.0.bed",'r') as f:
 			for line in f:
-				if (hashDiscard(a, options.seed, line)):
+				if (discard(a, options.seed, line)):
 					continue
 				else:
 					outf.write(line)
@@ -318,7 +282,7 @@ def param_write(r, outdir):
 def param_plot(r, outdir):
 	df = pd.DataFrame(r)
 	plt.figure(figsize=(10,6), tight_layout=True)
-	plt.plot(df.loc[1].tolist(), df.loc[2].tolist(), 's-')
+	plt.plot(df.loc[0].tolist(), df.loc[1].tolist(), 's-')
 	plt.xlabel('Number of Reads')
 	plt.ylabel('Proportion of marks')
 	plt.savefig(outdir+'/completeplot.jpg')
@@ -348,7 +312,7 @@ def mm(df, outdir):
 
 	fm= np.linspace(0, max(data[0]), 100)
 	plt.figure(figsize=(10,6), tight_layout=True)
-	plt.scatter(df.loc[1].tolist(), df.loc[2].tolist(), color = 'k')
+	plt.scatter(df.loc[0].tolist(), df.loc[1].tolist(), color = 'k')
 	plt.plot(fm, v(fm, result.params['Vm'].value, result.params['Km'].value), 'k')
 	plt.xlabel('[S] (reads)')
 	plt.ylabel('v (proportion)')
