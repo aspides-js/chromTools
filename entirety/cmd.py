@@ -40,16 +40,13 @@ def run( options ):
 
 	## Concatenating
 	cat_bed( options.files, options.subdir, options.info)
-	total, nfile = wc( options.increment, options.subdir, options.info )
+	total, nfile = wc( options.increment, options.subdir, options.info, options.warn )
 
 	## Downsampling
 	start_time = time.time()
 	options.info('Downsampling...')
 	options.info("CPU number: "+str(mp.cpu_count()))
 
-	# give warning if nfile is very high
-	if nfile > 100:
-		warn("Number of downsampled files will be %s", % nfile)
 	
 	pool = mp.Pool()
 	args = [(n, options, total) for n in range(1,nfile)] # nfile should be number calculated by wc()
@@ -76,7 +73,7 @@ def run( options ):
 	param_plot(r, options.outdir)
 	
 	print('Complete')
-	print(r)
+
 	
 
 
@@ -150,12 +147,19 @@ def cat_bed(files, subdir, info):
 
 
 
-def wc(increment, subdir, info):
+def wc(increment, subdir, info, warn):
 	start_time = time.time()
 	info("Calculating total read number...")
 	total = int(check_output(["wc", "-l", subdir+"downsampled.0.bed"]).split()[0])/2
 	info("--- %s seconds ---" % (time.time() - start_time))
-	return total, int(total/increment)
+
+	nfile = int(total/increment)
+
+	# give warning if nfile is very high
+	if nfile > 100:
+		warn("Number of downsampled files will be %s", % nfile)
+
+	return total, nfile
 
 #--------------------------------------------------------------------------------#
 
@@ -187,9 +191,6 @@ def downsample(n, options, total):
 	whose value is below the limit are written to outfile, records whose hash value is above 
 	the limit are discarded.
 
-	Assumes a sorted paired bed file.
-	todo: checks on sorted
-	what to do with unpaired?
 	'''
 	proportion = (options.increment*n)/total
 	outfile = options.subdir+'downsampled.'+str(n)+'.bed'
