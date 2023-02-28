@@ -15,7 +15,6 @@ import pandas as pd
 import numpy as np
 import lmfit
 import mmh3
-
 import logging
 
 from MACS3.Signal.PeakDetect import PeakDetect
@@ -32,11 +31,6 @@ from entirety.validate import assert_compressed, macs_validator
 # Main function
 # ------------------------------------
 
-def run2( options):
-	print(options.region)
-	filedir = ['/lustre/projects/Research_Project-MRC190311/ChIPSeq/simulate/chr1_1500000_normalgenome/2_binarised/10//chr1_region_binary.txt', '/lustre/projects/Research_Project-MRC190311/ChIPSeq/simulate/chr1_1500000_normalgenome/2_binarised/10//cell_chrY_binary.txt', '/lustre/projects/Research_Project-MRC190311/ChIPSeq/simulate/chr1_1500000_normalgenome/2_binarised/10//cell_chr1_binary.txt']
-	print(region_limit(options.region, filedir))
-
 def run( options ):
 	# options
 	metadir = options.metadir
@@ -44,14 +38,18 @@ def run( options ):
 	bindir = options.bindir
 	increment = options.increment
 
-
+	## Concatenating
 	cat_bed( options.files, options.subdir, options.info)
 	total, nfile = wc( options.increment, options.subdir, options.info )
 
+	## Downsampling
 	start_time = time.time()
 	options.info('Downsampling...')
 	options.info("CPU number: "+str(mp.cpu_count()))
 
+	# give warning if nfile is very high
+	if nfile > 100:
+		warn("Number of downsampled files will be %s", % nfile)
 	
 	pool = mp.Pool()
 	args = [(n, options, total) for n in range(1,nfile)] # nfile should be number calculated by wc()
@@ -62,7 +60,7 @@ def run( options ):
 		r[res[0]].append(res[1])
 	options.info("--- %s seconds ---" % (time.time() - start_time))
 
-
+	## Binarising
 	options.info('Macs binarising...')
 	#options = macs_validator( options )
 	args = [(n, options) for n in range(0,nfile)] # nfile should be number calculated by wc()
@@ -91,6 +89,7 @@ def use_macs( n,  options ):
 	t1 = t0
 	options.d = options.tsize
 
+
 	peakdetect = PeakDetect(treat = treat, control = control, opt = options)
 	peakdetect.call_peaks()
 
@@ -114,7 +113,9 @@ def count_peakmark( options ):
 			g[chrom].append(num)
 
 	if 0 in [sum(x[1:]) for x in g.values()]:
-		options.warn("0 values in chromosome peak count may indicate incorrect chromosome length file.")
+		p = dict(zip(list(d.keys()), [sum(x[1:]) for x in d.values()]))
+		chr0 = ' '.join([k for (k, v) in p.items() if v == 0])
+		options.warn("0 values in chromosome(s) %s peak count may indicate incorrect chromosome length file." % chr0)
 
 	return (sum([sum(x[1:]) for x in g.values()]))/(sum([x[0] for x in g.values()])) #sum of counted peaks / total chromosome length
 
