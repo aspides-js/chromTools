@@ -47,7 +47,7 @@ def main():
 	argparser.add_argument('-f','--files', type=str, nargs = '+', 
 				required=True, help = "Input BED files. Should include full path to file")
 	argparser.add_argument("--chromhmm", type=str, 
-				help = "Path to ChromHMM.jar file", required = True)
+				help = "Path to ChromHMM.jar file", required = False)
 	argparser.add_argument('-i', '--increment', type=int, 
 				default = 50000000, help = "Read number to increase increment by. Default is 50000000")
 	argparser.add_argument('-o', "--outdir", dest = "outdir", type = str, default = '', \
@@ -59,6 +59,7 @@ def main():
 	argparser.add_argument('--region', type=str, default = '')
 	argparser.add_argument('--force-overwrite', dest = "force", default = False, action = "store_true",
 			help = "If TRUE, files and directories in OUTDIR will be overwritten. Default is FALSE")
+	argparser.add_argument('--gsize', default = False, help = "Default is FALSE")
 
 	args = argparser.parse_args()
 
