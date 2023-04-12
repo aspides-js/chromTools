@@ -12,65 +12,75 @@ from subprocess import check_output
 import multiprocessing as mp
 import matplotlib.pyplot as plt
 import pandas as pd
+import numpy as np
+import lmfit
 import mmh3
-
 import logging
+import tempfile
 
+from MACS3.Signal.PeakDetect import PeakDetect
+from MACS3.IO.Parser import BEDParser, BEDPEParser
+from MACS3.Commands.callpeak_cmd import load_frag_files_options
 
 # ------------------------------------
 # own python modules
 # ------------------------------------
 
-from entirety.validate import assert_compressed
+from entirety.validate import assert_compressed, macs_validator
+from entirety.bootstrap_cmd import *
 
 # ------------------------------------
 # Main function
 # ------------------------------------
-
-def run2( options):
-	print(options.region)
-	filedir = ['/lustre/projects/Research_Project-MRC190311/ChIPSeq/simulate/chr1_1500000_normalgenome/2_binarised/10//chr1_region_binary.txt', '/lustre/projects/Research_Project-MRC190311/ChIPSeq/simulate/chr1_1500000_normalgenome/2_binarised/10//cell_chrY_binary.txt', '/lustre/projects/Research_Project-MRC190311/ChIPSeq/simulate/chr1_1500000_normalgenome/2_binarised/10//cell_chr1_binary.txt']
-	print(region_limit(options.region, filedir))
-
 def run( options ):
+	"""_summary_
+
+	Args:
+		options (_type_): _description_
+	"""
 	# options
-	metadir = options.metadir
-	subdir = options.subdir
-	bindir = options.bindir
-	increment = options.increment
+	#subdir = options.subdir
+	#bindir = options.bindir
+	#increment = options.increment
 
-
+	## Concatenating
 	cat_bed( options.files, options.subdir, options.info)
-	total, nfile = wc( options.increment, options.subdir, options.info )
+	total, nfile = wc( options.increment, options.subdir, options.info, options.warn, options.paired)
 
+	## Downsampling
 	start_time = time.time()
+	options.start_time = start_time
 	options.info('Downsampling...')
 	options.info("CPU number: "+str(mp.cpu_count()))
-	'''
+
+	
 	pool = mp.Pool()
 	args = [(n, options, total) for n in range(1,nfile)] # nfile should be number calculated by wc()
+
 	r = {} # initiate empty dictionary
 	for res in pool.starmap(downsample, args):
 		r.setdefault(res[0], [])
 		r[res[0]].append(res[1])
-	options.info("--- %s seconds ---" % (time.time() - start_time))
-	
-	args = [(n, options) for n in range(nfile)] # redefine args so the downsampled.0.bed is included
+		options.info("--- %s seconds ---" % (time.time() - start_time))
 
-	options.info('Binarising...')
+	print(r)
+	## Binarising
+	options.info('Macs binarising...')
+	args = [(n, options) for n in range(0,nfile)] # nfile should be number calculated by wc()
+	options.info('args calcualted')
 	r['0']=[total]
-	for res in pool.starmap(binarise, args):
+	for res in pool.starmap(use_macs, args):
 		r.setdefault(res[0], [])
 		r[res[0]].append(res[1])
 	options.info("--- %s seconds ---" % (time.time() - start_time))
-	pool.close()
 
+	print(r)
 	param_write(r, options.outdir)
 	param_plot(r, options.outdir)
 	
 	print('Complete')
-	print(r)
-	'''
+
+
 
 #--------------------------------------------------------------------------------#
 
@@ -93,12 +103,27 @@ def cat_bed(files, subdir, info):
 
 
 
-def wc(increment, subdir, info):
+def wc(increment, subdir, info, warn, paired):
 	start_time = time.time()
 	info("Calculating total read number...")
-	total = int(check_output(["wc", "-l", subdir+"downsampled.0.bed"]).split()[0])/2
+	total = int(check_output(["wc", "-l", subdir+"downsampled.0.bed"]).split()[0])
+
+	if paired:
+		total = total/2
+
 	info("--- %s seconds ---" % (time.time() - start_time))
-	return total, int(total/increment)
+
+	nfile = int(total/increment)
+
+	# give warning if nfile is very high
+	if nfile > 100:
+		warn("Number of downsampled files will be %s" % nfile)
+
+	if total == 0:
+		warn("Total number of lines is equal to 0. Are your input files empty? Terminating.")
+		sys.exit(1)
+		
+	return total, nfile
 
 #--------------------------------------------------------------------------------#
 
@@ -130,9 +155,6 @@ def downsample(n, options, total):
 	whose value is below the limit are written to outfile, records whose hash value is above 
 	the limit are discarded.
 
-	Assumes a sorted paired bed file.
-	todo: checks on sorted
-	what to do with unpaired?
 	'''
 	proportion = (options.increment*n)/total
 	outfile = options.subdir+'downsampled.'+str(n)+'.bed'
@@ -141,7 +163,7 @@ def downsample(n, options, total):
 	with open(outfile, 'w') as outf:
 		with open(options.subdir+"downsampled.0.bed",'r') as f:
 			for line in f:
-				if (hashDiscard(a, options.seed, line)):
+				if (discard(a, options.seed, line)):
 					continue
 				else:
 					outf.write(line)
@@ -152,12 +174,7 @@ def downsample(n, options, total):
 
 #--------------------------------------------------------------------------------#
 
-def metafile_write(metadir, n):
-	"""
-	Creates the text file with specified input downsampled files for ChromHMM binarisation
-	"""
-	with open(metadir+"cellMarkBedFile."+n+".txt", "w") as outf:
-		outf.write("cell\tmark\tdownsampled."+n+".bed")  
+
 
 def region_limit(region, filedir):
 	chrom = region.split(':')[0]
@@ -176,44 +193,64 @@ def region_limit(region, filedir):
 	filedir = [chr_file]
 	return filedir
 
-def count_mark(ndir, n, bindir, region):
-	filedir=os.listdir(bindir+ndir)
-	filedir=[bindir+ndir+'/'+file for file in filedir]
-	#filedir=['cell_chr1_binary.txt']
-	if region != '':
-		print(region)
-		filedir = region_limit(region, filedir)
-		
-	count=0
-	total=0
-	for file in filedir:
-		with open(file, 'r') as f:
-			next(f)
-			next(f) #discard first two lines
-			for l in f:
-				if l == "1\n":
-					count+=1
-					total+=1
-				else:
-					total+=1
-	return n, count/total
+
+#--------------------------------------------------------------------------------#
+
+def use_macs( n,  options ):
+	options.info('validate macs: '+str(n)+'.bed')
+	options = macs_validator(n, options)
+	options.info('load frag files: '+str(n)+'.bed')
+
+	tempfile.tempdir = options.tempdir
+	(treat, control) = load_frag_files_options (options)
+	options.info("--- %s seconds ---" % (time.time() - options.start_time))
+
+	t0 = treat.total
+	t1 = t0
+	options.d = options.tsize
+
+	peakdetect = PeakDetect(treat = treat, control = control, opt = options)
+	print(str(n)+'.bed')
+	options.info("--- %s seconds ---" % (time.time() - options.start_time))
+	peakdetect.call_peaks()
+	print(str(n)+'.bed')
+	options.info("--- %s seconds ---" % (time.time() - options.start_time))
+
+	# filter out low fe peaks
+	#peakdetect.peaks.filter_fc( fc_low = options.fecutoff )
 
 
-def binarise(n, options):
-	n = str(n)
-	metafile_write(options.metadir, str(n))
-	if (len(n) < 2):
-		ndir = "0"+n
-	else:
-		ndir = str(n)
+	ofhd_bed = open( options.peakBed, "w" )
+	peakdetect.peaks.write_to_narrowPeak (ofhd_bed, name_prefix=b"%s_peak_", name=options.name.encode(), score_column="qscore", trackline=False )
+	ofhd_bed.close()
+	
+	return str(n), count_peakmark( options )
 
-	if not os.path.exists(options.bindir+ndir):
-		os.mkdir(options.bindir+ndir)
 
-	subprocess.run("java -mx2400M -jar "+options.chromhmmJar+" BinarizeBed -b 200 "+options.genome+" "+options.subdir+" "+options.metadir+"cellMarkBedFile."+n+".txt "+options.bindir+ndir)
-	res = count_mark(ndir, n, options.bindir, options.region)
-	return res
+def count_peakmark( options ):
+	g = chr_len(options.genome)
+	with open(options.peakBed, "r") as f:
+		for line in f:
+			chrom = line.split('\t')[0]
+			num = int(line.split('\t')[2]) - int(line.split('\t')[1])
+			g[chrom].append(num)
 
+	if 0 in [sum(x[1:]) for x in g.values()]:
+#		p = dict(zip(list(g.keys()), [sum(x[1:]) for x in g.values()]))
+#		chr0 = ' '.join([k for (k, v) in p.items() if v == 0])
+		options.warn("0 values in chromosome(s) peak count may indicate incorrect chromosome length file.")
+
+	return (sum([sum(x[1:]) for x in g.values()]))/(sum([x[0] for x in g.values()])) #sum of counted peaks / total chromosome length
+
+
+def chr_len(genome):
+	g = {}
+	with open(genome) as f:
+		for line in f:
+			(key, val) = line.split()
+			g.setdefault(key, [])
+			g[key].append(int(val))
+	return g
 
 #--------------------------------------------------------------------------------#
 
@@ -226,7 +263,7 @@ def param_write(r, outdir):
 def param_plot(r, outdir):
 	df = pd.DataFrame(r)
 	plt.figure(figsize=(10,6), tight_layout=True)
-	plt.plot(df.loc[1].tolist(), df.loc[2].tolist(), 's-')
+	plt.plot(df.loc[0].tolist(), df.loc[1].tolist(), 's-')
 	plt.xlabel('Number of Reads')
 	plt.ylabel('Proportion of marks')
 	plt.savefig(outdir+'/completeplot.jpg')
@@ -256,7 +293,7 @@ def mm(df, outdir):
 
 	fm= np.linspace(0, max(data[0]), 100)
 	plt.figure(figsize=(10,6), tight_layout=True)
-	plt.scatter(df.loc[1].tolist(), df.loc[2].tolist(), color = 'k')
+	plt.scatter(df.loc[0].tolist(), df.loc[1].tolist(), color = 'k')
 	plt.plot(fm, v(fm, result.params['Vm'].value, result.params['Km'].value), 'k')
 	plt.xlabel('[S] (reads)')
 	plt.ylabel('v (proportion)')
@@ -266,3 +303,6 @@ def mm(df, outdir):
 
 	with open(outdir+"/mm.txt", 'w') as f:
 		f.write(str(result.params['Vm'].value)+"\t"+str(result.params['Km'].value))
+
+#-------------------------------------------------------------------------------#
+
