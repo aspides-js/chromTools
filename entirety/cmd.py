@@ -33,10 +33,10 @@ from entirety.bootstrap_cmd import *
 # Main function
 # ------------------------------------
 def run( options ):
-	"""_summary_
+	"""The Main function pipeline for entirety
 
 	Args:
-		options (_type_): _description_
+		options (Namespace object): Command line options
 	"""
 	# options
 	#subdir = options.subdir
