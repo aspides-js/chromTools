@@ -50,7 +50,6 @@ def args_validator( options ):
 	## genome
 	if not options.gsize:
 		try:	
-			#options.genome = options.chromhmm+"CHROMSIZES/"+gnm[options.genome]
 			options.gsize = gnm[options.genome][1]
 			options.genome = Path(__file__).parent / "chromsize" / gnm[options.genome][0]
 			options.info('Path to genome chromosome sizes is: %s' % options.genome)
@@ -72,13 +71,11 @@ def args_validator( options ):
 
 
 	## outdir
-	options.metadir = options.outdir+"/0_metadata/"
 	options.subdir = options.outdir+"/1_subsample/"
 	options.bindir = options.outdir+"/2_binarised/"
 
 	if options.force:
 		try:
-			os.makedirs(options.metadir, exist_ok = True)
 			os.makedirs(options.subdir, exist_ok = True)
 			os.makedirs(options.bindir, exist_ok = True)
 		except:
@@ -135,10 +132,15 @@ def macs_validator( n, options ):
 
 
 	## load_frag_files_options
+	options.tempdir = "/lustre/projects/Research_Project-MRC190311/tmp/"
 	options.tfile = [options.subdir+'/downsampled.'+str(n)+'.bed']
 	options.name = "P0"+nname
 	options.cfile = False
+	#if options.paired:
 	options.parser = BEDPEParser
+	options.nomodel = True
+	#else:
+	#	options.parser = BEDParser
 	options.buffer_size = 100000
 
 	## peakdetect options
@@ -147,7 +149,13 @@ def macs_validator( n, options ):
 	options.log_pvalue = None
 	options.maxgap = False
 	options.minlen = False
-	options.shift = False
+	if options.datatype == 'atac':
+		options.nomodel = True
+		options.shift = 100
+		options.extsize = 200
+	else:
+		options.shift = False
+
 	options.nolambda = False 
 	options.smalllocal = 1000
 	options.largelocal = 10000
@@ -159,10 +167,10 @@ def macs_validator( n, options ):
 	options.cutoff_analysis_file = "None"
 	options.call_summits = False
 	options.trackline = False
-	options.broad = False
+	options.broad = False	
 
 	# output filenames
-	options.peakBed = os.path.join( options.outdir, options.name+"_peaks.bed" ) 
+	options.peakBed = os.path.join( options.outdir, "2_binarised", options.name+"_peaks.bed" ) 
 	options.bdg_treat = os.path.join( options.outdir, options.name+"_treat_pileup.bdg" ) 
 	options.bdg_control= os.path.join( options.outdir, options.name+"_control_lambda.bdg" )
 

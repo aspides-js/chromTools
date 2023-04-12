@@ -1,4 +1,4 @@
-COMPLETE_VERSION = "1.0"
+COMPLETE_VERSION = "1.0.0"
 GENOME = {"ce10":["ce10.txt", 100286401],
 			"ce11":["ce11.txt", 100286401],
 			"ce6":["ce6.txt", 100286401],

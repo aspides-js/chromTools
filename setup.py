@@ -7,6 +7,6 @@ exec(open("entirety/constants.py").read())
 setup(name='entirety',
       version=COMPLETE_VERSION,
       packages=['entirety'],
-      scripts=['bin/ENTIRETY'],
+      scripts=['bin/entirety'],
       package_data={'entirety': ['chromsize/*.txt']}
       )

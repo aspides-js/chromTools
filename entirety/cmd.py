@@ -16,6 +16,7 @@ import numpy as np
 import lmfit
 import mmh3
 import logging
+import tempfile
 
 from MACS3.Signal.PeakDetect import PeakDetect
 from MACS3.IO.Parser import BEDParser, BEDPEParser
@@ -26,17 +27,21 @@ from MACS3.Commands.callpeak_cmd import load_frag_files_options
 # ------------------------------------
 
 from entirety.validate import assert_compressed, macs_validator
+from entirety.bootstrap_cmd import *
 
 # ------------------------------------
 # Main function
 # ------------------------------------
-
 def run( options ):
+	"""_summary_
+
+	Args:
+		options (_type_): _description_
+	"""
 	# options
-	metadir = options.metadir
-	subdir = options.subdir
-	bindir = options.bindir
-	increment = options.increment
+	#subdir = options.subdir
+	#bindir = options.bindir
+	#increment = options.increment
 
 	## Concatenating
 	cat_bed( options.files, options.subdir, options.info)
@@ -44,6 +49,7 @@ def run( options ):
 
 	## Downsampling
 	start_time = time.time()
+	options.start_time = start_time
 	options.info('Downsampling...')
 	options.info("CPU number: "+str(mp.cpu_count()))
 
@@ -55,13 +61,13 @@ def run( options ):
 	for res in pool.starmap(downsample, args):
 		r.setdefault(res[0], [])
 		r[res[0]].append(res[1])
-	options.info("--- %s seconds ---" % (time.time() - start_time))
+		options.info("--- %s seconds ---" % (time.time() - start_time))
 
+	print(r)
 	## Binarising
 	options.info('Macs binarising...')
-	#options = macs_validator( options )
 	args = [(n, options) for n in range(0,nfile)] # nfile should be number calculated by wc()
-
+	options.info('args calcualted')
 	r['0']=[total]
 	for res in pool.starmap(use_macs, args):
 		r.setdefault(res[0], [])
@@ -74,7 +80,7 @@ def run( options ):
 	
 	print('Complete')
 
-	
+
 
 #--------------------------------------------------------------------------------#
 
@@ -113,6 +119,10 @@ def wc(increment, subdir, info, warn, paired):
 	if nfile > 100:
 		warn("Number of downsampled files will be %s" % nfile)
 
+	if total == 0:
+		warn("Total number of lines is equal to 0. Are your input files empty? Terminating.")
+		sys.exit(1)
+		
 	return total, nfile
 
 #--------------------------------------------------------------------------------#
@@ -187,20 +197,27 @@ def region_limit(region, filedir):
 #--------------------------------------------------------------------------------#
 
 def use_macs( n,  options ):
+	options.info('validate macs: '+str(n)+'.bed')
 	options = macs_validator(n, options)
+	options.info('load frag files: '+str(n)+'.bed')
 
+	tempfile.tempdir = options.tempdir
 	(treat, control) = load_frag_files_options (options)
+	options.info("--- %s seconds ---" % (time.time() - options.start_time))
 
 	t0 = treat.total
 	t1 = t0
 	options.d = options.tsize
 
-
 	peakdetect = PeakDetect(treat = treat, control = control, opt = options)
+	print(str(n)+'.bed')
+	options.info("--- %s seconds ---" % (time.time() - options.start_time))
 	peakdetect.call_peaks()
+	print(str(n)+'.bed')
+	options.info("--- %s seconds ---" % (time.time() - options.start_time))
 
 	# filter out low fe peaks
-	peakdetect.peaks.filter_fc( fc_low = options.fecutoff )
+	#peakdetect.peaks.filter_fc( fc_low = options.fecutoff )
 
 
 	ofhd_bed = open( options.peakBed, "w" )
@@ -219,9 +236,9 @@ def count_peakmark( options ):
 			g[chrom].append(num)
 
 	if 0 in [sum(x[1:]) for x in g.values()]:
-		p = dict(zip(list(g.keys()), [sum(x[1:]) for x in g.values()]))
-		chr0 = ' '.join([k for (k, v) in p.items() if v == 0])
-		options.warn("0 values in chromosome(s) %s peak count may indicate incorrect chromosome length file." % chr0)
+#		p = dict(zip(list(g.keys()), [sum(x[1:]) for x in g.values()]))
+#		chr0 = ' '.join([k for (k, v) in p.items() if v == 0])
+		options.warn("0 values in chromosome(s) peak count may indicate incorrect chromosome length file.")
 
 	return (sum([sum(x[1:]) for x in g.values()]))/(sum([x[0] for x in g.values()])) #sum of counted peaks / total chromosome length
 
