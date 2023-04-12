@@ -1,18 +1,20 @@
-# complete
+# entirety
 
-Complete is a tool to assess the completeness of your epigenetic dataset. Can be used with ChIP-seq, ATAC-seq or WGBS data.
+entirety is a tool to assess the entiretyness of your epigenetic dataset. Can be used with ChIP-seq, ATAC-seq or WGBS data.
 
 For questions on installation or usage, please open an issue or contact Jessica Shields (j.m.shields@exeter.ac.uk).
 
 ## 1. Install
 
-## 2. Basic usage
-complete is a single command line tool which takes as input a set of BED files, and outputs a metric and plot indicating how complete the dataset is.
+You can install entirety via ```git clone``` and then by running ```pip install -e ./[dev]```. The program requires python>=3.7 and pip>=23.
 
-Basic usage is shown below. See [detailed usage](https://github.com/aspides-js/complete/edit/main/README.md#3-detailed-usage) below for more info.
+## 2. Basic usage
+entirety is a single command line tool which takes as input a set of BED files, and outputs a metric and plot indicating how entirety the dataset is.
+
+Basic usage is shown below. See [detailed usage](https://github.com/aspides-js/entirety/edit/main/README.md#3-detailed-usage) below for more info.
 
 ```
-complete \
+entirety \
   -f <reads.bed> \
   --chromhmm <path-to-chromhmm-file> \
   [-i <increment>] \
@@ -25,13 +27,12 @@ complete \
 
 ## 3. Detailed usage
 
-#### complete
+#### entirety
 
 Required parameters:
 
 
-* `--files/-f <reads.bed>`: BED files of the dataset. May either be aligned or peak files. 
-* `--chromhmm <path-to-chromhmm-file>`: Specify the path to the chromhmm.jar file. 
+* `--files/-f <reads.bed>`: BED files of the dataset. Must be aligned files. 
 
 Optional parameters:
 
@@ -47,6 +48,6 @@ specifying the desired assembly and redirecting the output to a text file. Defau
 ## 4. Usage example
 In this example, we use the files tmp_1.bed tmp_2.bed tmp_3.bed as input.
 
-`complete -f tmp_1.bed tmp_2.bed tmp_3.bed --chromhmm ${CHMMPATH} --increment 50000 --genome hg19 `
+`entirety -f tmp_1.bed tmp_2.bed tmp_3.bed --chromhmm ${CHMMPATH} --increment 50000 --genome hg19 `
 
 This command first concatenates the files into downsampled.0.bed. This file is then downsampled, binarisation run on each of these and proportion of marks found calculated. The command outputs a text file with the metrics, and plots the results.
