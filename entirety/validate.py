@@ -23,10 +23,17 @@ from MACS3.IO.Parser import BEDParser, BEDPEParser
 # ------------------------------------
 
 def args_validator( options ):
-	''' 
-	Validate command line arguments:
-		chromhmm; files; outdir; genome
-	'''
+	"""Validate command line arguments and set additional necessary parameters
+
+	Args:
+		options (Namespace object): Command line arguments
+
+	Raises:
+		FileNotFoundError: Paths to files, directories unaccessible
+
+	Returns:
+		options (Namespace object): Command line arguments
+	"""
 
 	## logging
 	logging.basicConfig(level = 20, format='%(levelname)-5s @ %(asctime)s: %(message)s ',\
@@ -105,6 +112,14 @@ def args_validator( options ):
 
 
 def assert_compressed(f):
+	"""Test whether file is compressed (can be opened) 
+
+	Args:
+		f (str): Path to file
+
+	Returns:
+		bool: Boolean specifying whether file can be opened or not
+	"""
 	try:
 		open(f, 'r').readline()
 		return False
@@ -113,9 +128,16 @@ def assert_compressed(f):
 
 
 def macs_validator( n, options ):
-	''' 
-	Set options for macs binarisation/peak calling
-	'''
+	"""	Set options for macs binarisation/peak calling
+
+	Args:
+		n (int): Numerical descriptor of file
+		options (Namespace object): Command line arguments
+
+	Returns:
+		options (Namespace object): Command line arguments
+	"""
+
 
 	## logging
 	logging.getLogger().setLevel(30)

@@ -85,9 +85,13 @@ def run( options ):
 #--------------------------------------------------------------------------------#
 
 def cat_bed(files, subdir, info):
-	'''
-	Concatenate compressed or uncompressed files into downsampled.0.bed
-	'''
+	"""Concatenate compressed or uncompressed files into downsampled.0.bed
+
+	Args:
+		files (str): Files to concatenate
+		subdir (str): Path to subsample directory
+		info (_type_): Logging 
+	"""
 	info("Concatenating files...")
 	start_time = time.time()
 	with open(subdir+"downsampled.0.bed",'wb') as wfd:
@@ -104,6 +108,19 @@ def cat_bed(files, subdir, info):
 
 
 def wc(increment, subdir, info, warn, paired):
+	"""Count total read number
+
+	Args:
+		increment (int): Amount to increase each subsampled file by
+		subdir (str): Path to subsample directory
+		info (_type_): Logging 
+		warn (_type_): Logging 
+		paired (bool): Paired end reads
+
+	Returns:
+		total (int): Total number of reads/read pairs in downsampled.0.bed
+		nfile (int): Number of files that will be generated
+	"""
 	start_time = time.time()
 	info("Calculating total read number...")
 	total = int(check_output(["wc", "-l", subdir+"downsampled.0.bed"]).split()[0])
@@ -128,9 +145,14 @@ def wc(increment, subdir, info, warn, paired):
 #--------------------------------------------------------------------------------#
 
 def params(proportion):
-	'''
-	Calculate a value between a range to reflect proportion of reads kept
-	'''
+	"""Calculate a value between a range to reflect proportion of reads kept
+
+	Args:
+		proportion (int): Proportion of reads to subsample from whole dataset
+
+	Returns:
+		maxHashValue (int): Threshold above which reads are discarded
+	"""
 	max_size = sys.maxsize
 	min_size = -sys.maxsize - 1
 	maxRange = max_size - min_size
@@ -140,22 +162,36 @@ def params(proportion):
 
 
 def discard(maxHashValue, seed, line):
-	'''
-	Generate a random hash from readname using seed. If number above proportional cut-off (True), discard read.
-	'''
+	"""Generate a random hash from readname using seed. If number above proportional cut-off (True), discard read.
+
+	Args:
+		maxHashValue (int): Threshold above which reads are discarded
+		seed (int): Random seed
+		line (str): Read/line in file
+
+	Returns:
+		bool: Boolean specifying if readname is below or above discard threshold
+	"""
 	readname=line.split('\t')[3].rsplit('/')[0] # extract readname, remove everything after '/' (read pair if paired)
 	hashInt=mmh3.hash64(readname, seed)
 	return hashInt[0] > maxHashValue
 
 
 def downsample(n, options, total):
-	''' 
-	Downsample a bed file. For each read pair, a random value is assigned between the range. 
+	"""	Downsample a bed file. For each read pair, a random value is assigned between the range. 
 	The proportion is used to calculate a maximum acceptable value within the range. Records 
 	whose value is below the limit are written to outfile, records whose hash value is above 
 	the limit are discarded.
 
-	'''
+	Args:
+		n (int): Numerical descriptor of file
+		options (Namespace object): Command line arguments
+		total (int): Total number of reads/read pairs in downsampled.0.bed
+
+	Returns:
+		n (int): Numerical descriptor of file
+		reads: Number of reads in file
+	"""
 	proportion = (options.increment*n)/total
 	outfile = options.subdir+'downsampled.'+str(n)+'.bed'
 	reads = 0
@@ -197,7 +233,17 @@ def region_limit(region, filedir):
 #--------------------------------------------------------------------------------#
 
 def use_macs( n,  options ):
-	options.info('validate macs: '+str(n)+'.bed')
+	"""Uses macs3 peak calling functionality to identify areas in the genome that 
+	have been enriched with aligned reads. 
+
+	Args:
+		n (int): Numerical descriptor of file
+		options (Namespace object): Command line arguments
+
+	Returns:
+		n (int): Numerical descriptor of file
+		(int): Sum of counted peaks / total chromosome length
+	"""
 	options = macs_validator(n, options)
 	options.info('load frag files: '+str(n)+'.bed')
 
@@ -228,6 +274,14 @@ def use_macs( n,  options ):
 
 
 def count_peakmark( options ):
+	"""Count the number of base pairs overlapping peaks per chromosome
+
+	Args:
+		options (Namespace object): Command line arguments
+
+	Returns:
+		(int): Sum of counted peaks / total chromosome length
+	"""
 	g = chr_len(options.genome)
 	with open(options.peakBed, "r") as f:
 		for line in f:
@@ -236,14 +290,20 @@ def count_peakmark( options ):
 			g[chrom].append(num)
 
 	if 0 in [sum(x[1:]) for x in g.values()]:
-#		p = dict(zip(list(g.keys()), [sum(x[1:]) for x in g.values()]))
-#		chr0 = ' '.join([k for (k, v) in p.items() if v == 0])
 		options.warn("0 values in chromosome(s) peak count may indicate incorrect chromosome length file.")
 
 	return (sum([sum(x[1:]) for x in g.values()]))/(sum([x[0] for x in g.values()])) #sum of counted peaks / total chromosome length
 
 
 def chr_len(genome):
+	"""Generate dictionary from genome chromosome length files
+
+	Args:
+		genome (str): Path to genome chromosome length file
+
+	Returns:
+		g (dict): {CHR number : length}
+	"""
 	g = {}
 	with open(genome) as f:
 		for line in f:
@@ -255,12 +315,24 @@ def chr_len(genome):
 #--------------------------------------------------------------------------------#
 
 def param_write(r, outdir):
+	"""Write the output to text file (tsv)
+
+	Args:
+		r (dict): {Subsampled file : [<Number of reads>, <Proportion of genome bound>] }
+		outdir (str): Output directory
+	"""
 	with open(outdir+"/completeness.txt", 'w') as f:
 		for key, value in r.items():
 			f.write('%s\t%s\t%s\n' % (key, value[0], value[1]))
 
 
 def param_plot(r, outdir):
+	"""Plot the output to graph and call the Micheal-Menten function
+
+	Args:
+		r (dict): {Subsampled file : [<Number of reads>, <Proportion of genome bound>] }
+		outdir (str): Output directory
+	"""
 	df = pd.DataFrame(r)
 	plt.figure(figsize=(10,6), tight_layout=True)
 	plt.plot(df.loc[0].tolist(), df.loc[1].tolist(), 's-')
@@ -283,6 +355,12 @@ def residuals(p, x, y):
 	return y - fi
 
 def mm(df, outdir):
+	"""Calculate the Michealis-Menten kinetics and plot to graph
+
+	Args:
+		df (pandas dataframe): [<Subsampled file>] [<Number of reads>] [<Proportion of genome bound>]
+		outdir (str): Output directory
+	"""
 	data = np.array(df)
 
 	params = lmfit.Parameters()
