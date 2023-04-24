@@ -171,12 +171,17 @@ def macs_validator( n, options ):
 	options.log_pvalue = None
 	options.maxgap = False
 	options.minlen = False
+	
 	if options.datatype == 'atac':
-		options.nomodel = True
+		options.parser = BEDParser
+		options.nomodel = False
 		options.shift = 100
 		options.extsize = 200
+		options.broad = True
+		options.broadcutoff = 5e-2
 	else:
 		options.shift = False
+		options.broad = False
 
 	options.nolambda = False 
 	options.smalllocal = 1000
@@ -189,7 +194,7 @@ def macs_validator( n, options ):
 	options.cutoff_analysis_file = "None"
 	options.call_summits = False
 	options.trackline = False
-	options.broad = False	
+		
 
 	# output filenames
 	options.peakBed = os.path.join( options.outdir, "2_binarised", options.name+"_peaks.bed" ) 
