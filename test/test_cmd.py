@@ -6,7 +6,7 @@
 # ------------------------------------
 
 
-from entirety.cmd import *
+from chromTools.cmd import *
 import random
 import pytest
 

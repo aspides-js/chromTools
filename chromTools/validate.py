@@ -15,7 +15,7 @@ from pathlib import Path
 # own python modules
 # ------------------------------------
 
-from entirety.constants import GENOME as gnm
+from chromTools.constants import GENOME as gnm
 from MACS3.IO.Parser import BEDParser, BEDPEParser
 
 # ------------------------------------

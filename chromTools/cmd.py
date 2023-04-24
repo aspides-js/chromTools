@@ -26,14 +26,14 @@ from MACS3.Commands.callpeak_cmd import load_frag_files_options
 # own python modules
 # ------------------------------------
 
-from entirety.validate import assert_compressed, macs_validator
-from entirety.bootstrap_cmd import *
+from chromTools.validate import assert_compressed, macs_validator
+from chromTools.bootstrap_cmd import *
 
 # ------------------------------------
 # Main function
 # ------------------------------------
 def run( options ):
-	"""The Main function pipeline for entirety
+	"""The Main function pipeline for chromTools
 
 	Args:
 		options (Namespace object): Command line options
