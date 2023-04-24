@@ -1,20 +1,20 @@
-# entirety
+# chromTools
 
-entirety is a tool to assess the completeness of your epigenetic dataset. Can be used with ChIP-seq, ATAC-seq or WGBS data.
+chromTools complete is a tool to assess the completeness of your epigenetic dataset. Can be used with ChIP-seq, ATAC-seq or WGBS data.
 
 For questions on installation or usage, please open an issue or contact Jessica Shields (j.m.shields@exeter.ac.uk).
 
 ## 1. Install
 
-You can install entirety via ```git clone``` and then by running ```pip install -e ./[dev]```. The program requires python>=3.7 and pip>=23.
+You can install chromTools via ```git clone``` and then by running ```pip install -e ./[dev]```. The program requires python>=3.7 and pip>=23.
 
 ## 2. Basic usage
-entirety is a single command line tool which takes as input a set of BED files, and outputs a metric and plot indicating how complete the dataset is.
+chromTools complete is a single command line tool which takes as input a set of BED files, and outputs a metric and plot indicating how complete the dataset is.
 
-Basic usage is shown below. See [detailed usage](https://github.com/aspides-js/entirety/edit/main/README.md#3-detailed-usage) below for more info.
+Basic usage is shown below. See [detailed usage](https://github.com/aspides-js/chromTools/edit/main/README.md#3-detailed-usage) below for more info.
 
 ```
-entirety \
+chromTools complete \
   -f <reads.bed> \
   [-i <increment>] \
   -o <outdir> \
@@ -27,7 +27,7 @@ entirety \
 
 ## 3. Detailed usage
 
-#### entirety
+#### chromTools
 
 Required parameters:
 
@@ -48,6 +48,6 @@ specifying the desired assembly and redirecting the output to a text file. Defau
 ## 4. Usage example
 In this example, we use the files test_s1.bed test_s2.bed as input.
 
-`entirety -f test_s1.bed test_s2.bed --outdir tmp/ --increment 25 --genome hg37 --paired `
+`chromTools complete -f test_s1.bed test_s2.bed --outdir tmp/ --increment 25 --genome hg37 --paired `
 
 This command first concatenates the files into downsampled.0.bed. This file is then downsampled, binarisation run on each of these and proportion of marks found calculated. The command outputs a text file with the metrics, and plots the results.
