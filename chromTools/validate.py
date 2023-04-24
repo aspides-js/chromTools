@@ -4,9 +4,8 @@
 # python modules
 # ------------------------------------
 
-import sys, os, time
+import sys, os
 import errno
-import shutil
 import random
 import logging
 from pathlib import Path

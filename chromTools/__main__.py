@@ -13,9 +13,9 @@ the distribution).
 # python modules
 # ------------------------------------
 
-import sys, os
+import sys
 import argparse as ap
-import time
+
 
 # ------------------------------------
 # own python modules
@@ -50,7 +50,7 @@ def main():
 
 
 	
-	subparsers = argparser.add_subparsers( dest = 'subcommand' )
+	subparsers = argparser.add_subparsers( dest = 'subcommand', required = True)
 
 	# command for 'complete'
 	add_complete_parser( subparsers )
