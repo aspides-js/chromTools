@@ -27,7 +27,7 @@ chromTools complete \
 
 ## 3. Detailed usage
 
-#### chromTools
+#### chromTools complete
 
 Required parameters:
 
