@@ -47,6 +47,8 @@ def main():
 
 	argparser.add_argument('--datatype', type=str, dest = "datatype", default = False, 
 			help = "If atac has been specified, a different chromhmm command will be used")
+	
+	argparser.add_argument("--tempdir", type=str, dest="tempdir", default=False)
 
 
 	

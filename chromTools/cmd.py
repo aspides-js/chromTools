@@ -247,7 +247,10 @@ def use_macs( n,  options ):
 	options = macs_validator(n, options)
 	options.info('load frag files: '+str(n)+'.bed')
 
-	tempfile.tempdir = options.tempdir
+	# if set by user, use alternative tempdir
+	if options.tempdir:
+		tempfile.tempdir = options.tempdir
+
 	(treat, control) = load_frag_files_options (options)
 	options.info("--- %s seconds ---" % (time.time() - options.start_time))
 

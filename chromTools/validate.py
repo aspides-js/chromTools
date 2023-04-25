@@ -153,7 +153,6 @@ def macs_validator( n, options ):
 
 
 	## load_frag_files_options
-	options.tempdir = "/lustre/projects/Research_Project-MRC190311/tmp/"
 	options.tfile = [options.subdir+'/downsampled.'+str(n)+'.bed']
 	options.name = "P0"+nname
 	options.cfile = False
