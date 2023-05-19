@@ -52,6 +52,9 @@ def args_validator( options ):
 	#else:
 	#	raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), options.chromhmm +'ChromHMM.jar' )
 	
+	## outdir
+	if options.outdir == '':
+		options.outdir=os.getcwd()
 
 	## genome
 	if not options.gsize:
@@ -151,17 +154,22 @@ def macs_validator( n, options ):
 	else:
 		nname = str(n)
 
+	## load_tag_files_options
+	options.tsize = False
 
 	## load_frag_files_options
 	options.tfile = [options.subdir+'/downsampled.'+str(n)+'.bed']
 	options.name = "P0"+nname
 	options.cfile = False
-	#if options.paired:
-	options.parser = BEDPEParser
-	options.nomodel = True
-	#else:
-	#	options.parser = BEDParser
-	options.buffer_size = 100000
+
+	if options.paired:
+		options.parser = BEDPEParser
+		options.nomodel = True
+	else:
+		options.parser = BEDParser
+
+	
+	options.buffer_size = 100000 #macs default
 
 	## peakdetect options
 	options.PE_MODE = options.paired
@@ -203,3 +211,39 @@ def macs_validator( n, options ):
 
 	return options
 
+
+def chmm_validator( options ):
+	"""	Set options for chromHMM binarisation
+
+	Args:
+		n (int): Numerical descriptor of file
+		options (Namespace object): Command line arguments
+
+	Returns:
+		options (Namespace object): Command line arguments
+	"""
+	print("running validator")
+	options.szchromlengthfile=options.genome
+	print(options.szchromlengthfile)
+	options.szoutputbinarydir=options.bindir
+	options.szmarkdir=options.subdir
+	options.szcontroldir=options.subdir
+
+	options.bbinarizebam=False
+	options.bpairend=options.paired
+	options.nshift=100 #chmm default
+	options.bcenterinterval=False
+	options.bmixed=False
+	options.noffsetleft=0  # the amount that should be subtracted from the left coordinate so it is 0-based inclusive
+	options.noffsetright=1 #based on bed files being 0-based but not inclusive
+	options.npseudocountcontrol=1 # An integer pseudocount that is uniformly added to every bin in the control data in order to smooth the control data from 0. The default value is 1.
+
+	options.szcolfields=None
+
+	options.dpoissonthresh =  0.0001 #chmm default
+	options.dfoldthresh=0 # chmm default
+	options.bcontainsthresh = True #i think chmm default - if true poisson cut off should be highest that still contains dpoissonthresh probability and if false requires strictly greater
+	options.dcountthresh = 0 #chmm default
+	options.nflankwidthcontrol = 5 #chmm default
+
+	return options

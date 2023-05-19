@@ -48,9 +48,6 @@ def main():
 	argparser.add_argument('--datatype', type=str, dest = "datatype", default = False, 
 			help = "If atac has been specified, a different chromhmm command will be used")
 	
-	argparser.add_argument("--tempdir", type=str, dest="tempdir", default=False)
-
-
 	
 	subparsers = argparser.add_subparsers( dest = 'subcommand', required = True)
 
@@ -78,12 +75,13 @@ def add_complete_parser( subparsers ):
 				help = "Directory where output files are written to. If unspecified files will be written to the current working directory")
 	complete_parser.add_argument("-g", "--genome", type=str, default='hg38')
 	complete_parser.add_argument('--gsize', default = False, help = "Required integer if specifying own genome chromosome length file. Default is FALSE")
-	complete_parser.add_argument('-s','--seed', type=str, help = "User can set random seen. If unspecified this will be generated randomly.")
+	complete_parser.add_argument('-s','--seed', type=int, help = "User can set random seen. If unspecified this will be generated randomly.")
 	complete_parser.add_argument('--paired', dest = 'paired', default = False, action = "store_true", 
 				help = "Specify whether the input data is paired or unpaired. Default is FALSE")
 	complete_parser.add_argument('--region', type=str, default = '')
 	complete_parser.add_argument('--force-overwrite', dest = "force", default = False, action = "store_true",
 			help = "If TRUE, files and directories in OUTDIR will be overwritten. Default is FALSE")
+	complete_parser.add_argument("--tempdir", type=str, dest="tempdir", default=False)
 	return 
 
 

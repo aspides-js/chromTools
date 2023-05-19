@@ -20,19 +20,20 @@ import tempfile
 
 from MACS3.Signal.PeakDetect import PeakDetect
 from MACS3.IO.Parser import BEDParser, BEDPEParser
-from MACS3.Commands.callpeak_cmd import load_frag_files_options
+from MACS3.Commands.callpeak_cmd import load_frag_files_options, load_tag_files_options
 
 # ------------------------------------
 # own python modules
 # ------------------------------------
 
-from chromTools.validate import assert_compressed, macs_validator
-from chromTools.bootstrap_cmd import *
+from chromTools.validate import assert_compressed, macs_validator, chmm_validator
+from chromTools.chmm_cmd import make_binary_data_from_bed
+#from chromTools.bootstrap_cmd import *
 
 # ------------------------------------
 # Main function
 # ------------------------------------
-def run( options ):
+def run_old( options ):
 	"""The Main function pipeline for chromTools
 
 	Args:
@@ -67,12 +68,13 @@ def run( options ):
 	## Binarising
 	options.info('Macs binarising...')
 	args = [(n, options) for n in range(0,nfile)] # nfile should be number calculated by wc()
-	options.info('args calcualted')
 	r['0']=[total]
 	for res in pool.starmap(use_macs, args):
 		r.setdefault(res[0], [])
 		r[res[0]].append(res[1])
 	options.info("--- %s seconds ---" % (time.time() - start_time))
+
+
 
 	print(r)
 	param_write(r, options.outdir)
@@ -81,6 +83,54 @@ def run( options ):
 	print('Complete')
 
 
+def run( options ):
+	"""The Main function pipeline for chromTools
+
+	Args:
+		options (Namespace object): Command line options
+	"""
+	# options
+	#subdir = options.subdir
+	#bindir = options.bindir
+	#increment = options.increment
+
+	## Concatenating
+	cat_bed( options.files, options.subdir, options.info)
+	total, nfile = wc( options.increment, options.subdir, options.info, options.warn, options.paired)
+
+	## Downsampling
+	start_time = time.time()
+	options.start_time = start_time
+	options.info('Downsampling...')
+	options.info("CPU number: "+str(mp.cpu_count()))
+
+	
+	pool = mp.Pool()
+	args = [(n, options, total) for n in range(1,nfile)] # nfile should be number calculated by wc()
+
+	r = {} # initiate empty dictionary
+	for res in pool.starmap(downsample, args):
+		r.setdefault(res[0], [])
+		r[res[0]].append(res[1])
+		options.info("--- %s seconds ---" % (time.time() - start_time))
+
+	print(r)
+	## Binarising
+	options.info('CHMM binarising...')
+	args = [(n, options) for n in range(0,nfile)] # nfile should be number calculated by wc()
+	r['0']=[total]
+	for res in pool.starmap(use_chmm, args):
+		r.setdefault(res[0], [])
+		r[res[0]].append(res[1])
+	options.info("--- %s seconds ---" % (time.time() - start_time))
+
+
+
+	print(r)
+	param_write(r, options.outdir)
+	param_plot(r, options.outdir)
+	
+	print('Complete')
 
 #--------------------------------------------------------------------------------#
 
@@ -251,7 +301,10 @@ def use_macs( n,  options ):
 	if options.tempdir:
 		tempfile.tempdir = options.tempdir
 
-	(treat, control) = load_frag_files_options (options)
+	if options.paired:
+		(treat, control) = load_frag_files_options (options)
+	else:
+		(treat, control) = load_tag_files_options( options)
 	options.info("--- %s seconds ---" % (time.time() - options.start_time))
 
 	t0 = treat.total
@@ -298,6 +351,7 @@ def count_peakmark( options ):
 	return (sum([sum(x[1:]) for x in g.values()]))/(sum([x[0] for x in g.values()])) #sum of counted peaks / total chromosome length
 
 
+
 def chr_len(genome):
 	"""Generate dictionary from genome chromosome length files
 
@@ -314,6 +368,19 @@ def chr_len(genome):
 			g.setdefault(key, [])
 			g[key].append(int(val))
 	return g
+
+#--------------------------------------------------------------------------------#
+
+def use_chmm( n, options ):
+	options = chmm_validator( options )
+	print(options.szchromlengthfile)
+	count, total = make_binary_data_from_bed( n, options )
+	print(count)
+	print(total)
+	return str(n), count/total
+
+
+
 
 #--------------------------------------------------------------------------------#
 
