@@ -14,44 +14,41 @@ import math
 # ------------------------------------
 
 def make_binary_data_from_bed( n, options ):
-    """_summary_
+    """Binarize BED data, both directly and with control.
 
     Args:
-        options (_type_): _description_
+        n (int): file number
+        options (Namespace object):
+            szchromfile (str): The name of the file containing chromosome information. It is a two-column file with the first column representing the chromosome and the second column representing the chromosome length.
+            szcontroldir (str): The directory containing the bed files with the control data. If set to None, no control data is used.
+            szchromlengthfile (str): The name of the two-column file containing chromosome and strand information.
+            szmarkdir (str): The directory containing the bed files with the regular mark data.
+            szcontroldir (str): The directory containing the bed files with the control data.
+            nflankwidthcontrol (int): Specifies the number of bins used in both directions to estimate the background. This attribute is only relevant if control data is being used.
+            szcellmarkfiletable (str): The tab-delimited file where each row contains cell information, mark information, bed file, and optionally the corresponding control bed file.
+            nshift (int): The number of bases a read should be shifted in the 5' to 3' direction of a read.
+            bcenterinterval (bool): If True, the center of the read is used instead of shifting if the read has already been extended.
+            noffsetleft (int): The amount that should be subtracted from the left coordinate to make it 0-based inclusive.
+            noffsetright (int): The amount that should be subtracted from the right coordinate to make it 0-based inclusive.
+            szoutputsignaldir (str): If not None, the intermediate signal data will be printed to this directory.
+            szoutputbinarydir (str): The directory where the binarized data will be printed.
+            szoutputcontroldir (str): If not None, the intermediate control signal data will be printed to this directory.
+            dpoissonthresh (float): The tail probability threshold on the Poisson distribution.
+            dfoldthresh (float): The fold threshold required for a present call.
+            bcontainsthresh (bool): If True, the Poisson cutoff should be the highest value that still contains the dpoissonthresh probability. If False, it requires strictly greater.
+            npseudocountcontrol (int): An integer pseudocount that is uniformly added to every interval to smooth the control data.
+            nbinsize (int): The number of base pairs in a bin.
+            szcolfields (str): A comma-delimited string indicating the 0-based columns of the chromosome, start, end, and optionally strand position. If set to None, the default values are used (0, 1, 2) for chromosome, start, and end, with the strand as the sixth column or the last column if fewer columns are present.
+            dcountthresh (float): The absolute signal threshold for a present call.
+            bbinarizebam (bool): If True, reads files as BAM files; otherwise, reads files as BED files.
 
     Raises:
-        ValueError: _description_
-        ValueError: _description_
-        ValueError: _description_
+        ValueError: Invalid line found in the chromosome length file if greater than two cols found
+    """
 
-    Returns:
-        _type_: _description_
-    """ 
-    ## check all options back to options
-    szchromlengthfile = options.szchromlengthfile
-    szoutputbinarydir = options.szoutputbinarydir
-    szmarkdir = options.szmarkdir
-    szcontroldir = options.szcontroldir
-
-    nshift = options.nshift
-    bcenterinterval = options.bcenterinterval
-    noffsetleft = options.noffsetleft
-    noffsetright = options.noffsetright
-    npseudocountcontrol = options.npseudocountcontrol
-
-    szcolfields = options.szcolfields
-
-    dpoissonthresh = options.dpoissonthresh
-    dfoldthresh = options.dfoldthresh
-    bcontainsthresh = options.bcontainsthresh
-    dcountthresh = options.dcountthresh
-    nflankwidthcontrol = options.nflankwidthcontrol
-
+    ## set starting options
     nbinsize = 200
     bcontrol = False
-    szcontrolfile = ''
-
-    control = False
     szcell = f'{n}'
     szmark = 'mark'
     hscells = set()
@@ -61,17 +58,17 @@ def make_binary_data_from_bed( n, options ):
     hmfiles = {}    
     hmfilescontrol = {}
     hmfiles[f'{szcell}\t{szmark}'] = [f'downsampled.{n}.bed']
-    if control:
+    if not options.control:
+        hscellnocontrol = hscells
+        hmfilescellcontrol = {}
+    else:
         hscellcontrol = hscells
         hmfilescontrol[f'{szcell}\t{szmark}'] = ['downsampled.ctrl.bed']
         bcontrol = True
-    else:
-        hscellnocontrol = hscells
-        hmfilescellcontrol = {}
 
     ## reads in the chromosome length information file
     # the first column of this file is the chromosome and the second is the chromsome length
-    with open(szchromlengthfile) as brchrom:
+    with open(options.szchromlengthfile) as brchrom:
         allines = brchrom.readlines()
 
     chroms = []  # stores the chromosome name
@@ -80,7 +77,7 @@ def make_binary_data_from_bed( n, options ):
     for szLine in allines:
         st = szLine.strip().split()
         if len(st) < 2:
-            raise ValueError("Invalid line found in " + szchromlengthfile)
+            raise ValueError("Invalid line found in " + options.szchromlengthfile)
         chrom = st[0]
         length = int(st[1])
         chroms.append(chrom)
@@ -110,11 +107,11 @@ def make_binary_data_from_bed( n, options ):
         bpresentmarkscontrol = [False for _ in range(nummarks)]
 
     bpresentmarks = [False for _ in range(nummarks)]
+
     #----------------------------------------
 
 
     for szcell in hscells:
-        # added in v1.18 to consistently reset chroms considered
         bpresent = [False for _ in range(len(chroms))]
         # going through each declared cell type
         hscellcontrol = hmfilescellcontrol.get(szcell)
@@ -125,7 +122,6 @@ def make_binary_data_from_bed( n, options ):
         else:
             bcontrolfile = True
             if len(hscellcontrol) == 1 and not bmissing:
-                # update in v1.14
                 # we have one control for all marks
                 numcontrolmarks = 1
             else:
@@ -133,9 +129,8 @@ def make_binary_data_from_bed( n, options ):
                 numcontrolmarks = nummarks
 
         # loading data for the cell type
-        print("loadgrid")
-        grid = load_grid(grid, bpresent, bpresentmarks, marks, nshift, nbinsize, bcenterinterval, noffsetleft,
-                noffsetright, hmfiles, szcell, szmarkdir, hmchrom, 0, szcolfields, False, False)
+        grid = load_grid(grid, bpresent, bpresentmarks, marks, options.nshift, nbinsize, options.noffsetleft,
+                options.noffsetright, hmfiles, szcell, options.szmarkdir, hmchrom, 0, bcontrol)
 
         if bcontrolfile:
             if gridcontrol[0] is None or len(gridcontrol[0][0]) != numcontrolmarks:
@@ -146,8 +141,8 @@ def make_binary_data_from_bed( n, options ):
                     sumgridcontrol[ni] = np.zeros((lengths[ni]//nbinsize, numcontrolmarks), dtype=int)
 
             # we have control data loading cell type data for that
-            gridcontrol = load_grid(gridcontrol, bpresentcontrol, bpresentmarkscontrol, marks, nshift, nbinsize, bcenterinterval, noffsetleft, noffsetright,
-                    hmfilescontrol, szcell, szcontroldir, hmchrom, npseudocountcontrol, szcolfields, False, True)
+            gridcontrol = load_grid(gridcontrol, bpresentcontrol, bpresentmarkscontrol, marks, options.nshift, nbinsize, options.noffsetleft, options.noffsetright,
+                    hmfilescontrol, szcell, options.szcontroldir, hmchrom, options.npseudocountcontrol, bcontrol)
 
 
 
@@ -158,15 +153,15 @@ def make_binary_data_from_bed( n, options ):
         # binarization will be based on control data
 
         # smoothing control data
-        window_sum_grid(gridcontrol, sumgridcontrol, nflankwidthcontrol)
+        window_sum_grid(gridcontrol, sumgridcontrol, options.nflankwidthcontrol)
 
         # determiming thresholds for each mark and background depth
         thresholds = determine_mark_thresholds_from_binned_data_array_against_control(
-                grid, sumgridcontrol, bpresent, bpresentcontrol, dpoissonthresh, dfoldthresh, bcontainsthresh, dcountthresh
+                grid, sumgridcontrol, bpresent, bpresentcontrol, options.dpoissonthresh, options.dfoldthresh, options.bcontainsthresh, options.dcountthresh
             )
         for nchrom in range(len(chroms)):
             if bpresent[nchrom] and bpresentcontrol[nchrom]:
-                szfile = os.path.join(szoutputbinarydir, szcell + "_" + chroms[nchrom] + "_binary.txt")
+                szfile = os.path.join(options.szoutputbinarydir, szcell + "_" + chroms[nchrom] + "_binary.txt")
                 print("Writing to file", szfile)
                 with open(szfile, 'w') as pw:
                     # we have both primary and control data for the mark
@@ -208,12 +203,12 @@ def make_binary_data_from_bed( n, options ):
                             pw.write("0\n")
 
     else: ## if no control file
-        thresholds = determine_mark_thresholds_from_binned_data_array(grid, bpresent, dpoissonthresh, dfoldthresh, bcontainsthresh, dcountthresh)
+        thresholds = determine_mark_thresholds_from_binned_data_array(grid, bpresent, options.dpoissonthresh, options.dfoldthresh, options.bcontainsthresh, options.dcountthresh)
         count=0
         total=0
         for nchrom in range(len(chroms)):
             if bpresent[nchrom]:
-                szfile = os.path.join(szoutputbinarydir, szcell + "_" + chroms[nchrom] + "_binary.txt")
+                szfile = os.path.join(options.szoutputbinarydir, szcell + "_" + chroms[nchrom] + "_binary.txt")
                 print("Writing to file " + szfile)
                 with open(szfile, 'w') as pw:
                     pw.write(szcell + "\t" + chroms[nchrom] + "\n")
@@ -243,9 +238,28 @@ def make_binary_data_from_bed( n, options ):
 
 #--------------------------------------
 
-def load_grid(grid, bpresent, bpresentmarks, marks, nshift, nbinsize, bcenterinterval, noffsetleft, noffsetright, hmfiles, szcell, szmarkdir, hmchrom, ninitval, szcolfields, bpeaks, bcontrol):
-    """     * Converts read level data for a cell into integer count information
-     * grid is the array for which the read counts will be loaded into"""
+def load_grid(grid, bpresent, bpresentmarks, marks, nshift, nbinsize, noffsetleft, noffsetright, hmfiles, szcell, szmarkdir, hmchrom, ninitval, bcontrol):
+    """Converts read level data for a cell into integer count information.
+
+    Args:
+        grid (numpy.ndarray): The array to load the read counts into.
+        bpresent (list): Indicates if there is a read for a chromosome with an index in hmchrom.
+        bpresentmark (list): Indicates if the mark is present in the cell type.
+        marks (list): Contains the names of the header marks.
+        nshift (int): The number of bases a read should be shifted in the 5' to 3' direction of a read.
+        nbinsize (int): The number of base pairs in a bin.
+        noffsetleft (int): The amount that should be subtracted from the left coordinate so it is 0-based inclusive.
+        noffsetright (int): The amount that should be subtracted from the right coordinate so it is 0-based inclusive.
+        hmfiles (dict): Maps cell and mark to an actual read file.
+        szcell (str): The cell we are interested in.
+        szmarkdir (str): The directory with bedfiles to read.
+        hmchrom (dict): Maps chromosome names to an index.
+        ninitval (int): The value that the data should be initialized to.
+        bcontrol (bool): if True, data is control data
+
+    Returns:
+        numpy.ndarray: The updated grid with the read counts.
+    """
     nummarks = len(grid[0][0])
     # columns
     nchromcol = 0
@@ -311,6 +325,20 @@ def load_grid(grid, bpresent, bpresentmarks, marks, nshift, nbinsize, bcenterint
 
 
 def determine_mark_thresholds_from_binned_data_array(grid, bpresent, dpoissonthresh, dfoldthresh, bcontainsthresh, dcountthresh):
+    """Determines the Poisson cutoffs based on the provided data.
+
+    Args:
+        grid (int[]): The integer data values from which to determine the Poisson cutoffs.
+        bpresent (bool[]): A vector indicating which indices of grid to include in the analysis.
+        dpoissonthresh (float): The tail probability threshold on the Poisson.
+        dfoldthresh (float): The fold threshold required for a present call.
+        bcontainsthresh (bool): If True, the Poisson cutoff should be the highest that still contains dpoissonthresh probability.
+                                If False, it requires a strictly greater cutoff.
+        dcountthresh (float): The absolute signal threshold for a present call.
+
+    Returns:
+        thresholds (list): Each element in this list represents the Poisson cutoff for a specific mark.
+    """    
     dcumthreshold = 1 - dpoissonthresh
     nummarks = len(grid[0][0])
     ntotallocs = 0
@@ -347,6 +375,21 @@ def determine_mark_thresholds_from_binned_data_array(grid, bpresent, dpoissonthr
 
 
 def determine_mark_thresholds_from_binned_data_array_against_control(grid, gridcontrol, bpresent, bpresentcontrol, dpoissonthresh, dfoldthresh, bcontainsthresh, dcountthresh):
+    """Determines the Poisson cutoffs based on the provided data.
+
+    Args:
+        grid (numpy.ndarray): The integer data values from which to determine the Poisson cutoffs.
+        gridcontrol (numpy.ndarray): The control data to which the thresholds will be relative.
+        bpresent (numpy.ndarray): A vector indicating which indices of 'grid' to include in the analysis.
+        bpresentcontrol (numpy.ndarray): A vector indicating which indices of 'gridcontrol' to include in the analysis.
+        dpoissonthresh (float): The tail probability threshold on the Poisson distribution.
+        dfoldthresh (float): The fold threshold required for a present call.
+        bcontainsthresh (bool): If True, the Poisson cutoff should be the highest value that still contains the 'dpoissonthresh' probability. If False, it requires strictly greater.
+        dcountthresh (float): The absolute signal threshold for a present call.
+
+    Returns:
+        thresholds (list): Each element in this list represents the Poisson cutoff for a specific mark.
+    """    
     dcumthreshold = 1 - dpoissonthresh
 
     nummarks = len(grid[0][0])

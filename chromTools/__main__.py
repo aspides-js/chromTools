@@ -69,6 +69,8 @@ def add_complete_parser( subparsers ):
 	complete_parser = subparsers.add_parser("complete", help = "By read count analysis of dataset completeness")
 	complete_parser.add_argument('-f','--files', type=str, nargs = '+', 
 				required=True, help = "Input BED files. Should include full path to file")
+	complete_parser.add_argument('-c','--control', type=str, nargs = '+', 
+				default=False, dest = "control", help = "Control BED files. Should include full path to file")
 	complete_parser.add_argument('-i', '--increment', type=int, 
 				default = 50000000, help = "Read number to increase increment by. Default is 50000000")
 	complete_parser.add_argument('-o', "--outdir", dest = "outdir", type = str, default = '', \

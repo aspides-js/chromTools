@@ -213,32 +213,40 @@ def macs_validator( n, options ):
 
 
 def chmm_validator( options ):
-	"""	Set options for chromHMM binarisation
+	"""Validates and configures the options for the ChromHMM binarisation.
 
 	Args:
-		n (int): Numerical descriptor of file
-		options (Namespace object): Command line arguments
+		options (Namespace): An object containing the pipeline arguments.
 
 	Returns:
-		options (Namespace object): Command line arguments
+		options (Namespace): The validated and configured options.
+
+	Configured Options:
+		- szchromlengthfile: The file containing the chromosome lengths (genome file).
+		- szoutputbinarydir: The directory to store the output binary files.
+		- szmarkdir: The subdirectory for mark-related files.
+		- szcontroldir: The subdirectory for control-related files.
+		- bpairend: A flag indicating whether the input data is paired-end (obtained from options.paired).
+		- nshift: The shift value (default: 100).
+		- noffsetleft: The amount to subtract from the left coordinate to make it 0-based inclusive (default: 0).
+		- noffsetright: The value to add to the right coordinate for 0-based, non-inclusive bed files (default: 1).
+		- npseudocountcontrol: An integer pseudocount added uniformly to each bin in the control data (default: 1).
+		- dpoissonthresh: The Poisson tail probability threshold (default: 0.0001).
+		- dfoldthresh: The fold threshold (default: 0).
+		- bcontainsthresh: A flag indicating the behavior of the Poisson cutoff (default: True).
+		- dcountthresh: The absolute signal threshold (default: 0).
+		- nflankwidthcontrol: The flank width for control data (default: 5).
 	"""
-	print("running validator")
 	options.szchromlengthfile=options.genome
-	print(options.szchromlengthfile)
 	options.szoutputbinarydir=options.bindir
 	options.szmarkdir=options.subdir
 	options.szcontroldir=options.subdir
 
-	options.bbinarizebam=False
 	options.bpairend=options.paired
 	options.nshift=100 #chmm default
-	options.bcenterinterval=False
-	options.bmixed=False
 	options.noffsetleft=0  # the amount that should be subtracted from the left coordinate so it is 0-based inclusive
 	options.noffsetright=1 #based on bed files being 0-based but not inclusive
 	options.npseudocountcontrol=1 # An integer pseudocount that is uniformly added to every bin in the control data in order to smooth the control data from 0. The default value is 1.
-
-	options.szcolfields=None
 
 	options.dpoissonthresh =  0.0001 #chmm default
 	options.dfoldthresh=0 # chmm default
