@@ -153,7 +153,7 @@ def make_binary_data_from_bed( n, options ):
         # binarization will be based on control data
 
         # smoothing control data
-        window_sum_grid(gridcontrol, sumgridcontrol, options.nflankwidthcontrol)
+        sumgridcontrol = window_sum_grid(gridcontrol, sumgridcontrol, options.nflankwidthcontrol)
 
         # determiming thresholds for each mark and background depth
         thresholds = determine_mark_thresholds_from_binned_data_array_against_control(
@@ -327,6 +327,9 @@ def load_grid(grid, bpresent, bpresentmarks, marks, nshift, nbinsize, noffsetlef
 def determine_mark_thresholds_from_binned_data_array(grid, bpresent, dpoissonthresh, dfoldthresh, bcontainsthresh, dcountthresh):
     """Determines the Poisson cutoffs based on the provided data.
 
+    This function calculates the thresholds for each mark based on the provided binned data array. It uses the Poisson
+    distribution and other parameters to determine the cutoffs.
+
     Args:
         grid (int[]): The integer data values from which to determine the Poisson cutoffs.
         bpresent (bool[]): A vector indicating which indices of grid to include in the analysis.
@@ -338,6 +341,20 @@ def determine_mark_thresholds_from_binned_data_array(grid, bpresent, dpoissonthr
 
     Returns:
         thresholds (list): Each element in this list represents the Poisson cutoff for a specific mark.
+
+    Calculation Details:
+        - Initializes variables and data structures.
+        - Computes the sum of data values for each mark across all relevant bins and chromosomes.
+        - Calculates the total number of bins considered for threshold determination.
+        - Computes the threshold for each mark based on the Poisson distribution.
+        - Adjusts the threshold based on the bcontainsthresh parameter.
+        - Sets the final threshold for each mark as the maximum value among various calculations.
+
+    Note:
+        - The thresholds are computed based on the Poisson distribution and various parameters provided.
+        - The function assumes that the input array (grid) has compatible dimensions and structure with other parameters.
+        - The function assumes that the math module is imported for mathematical calculations.
+
     """    
     dcumthreshold = 1 - dpoissonthresh
     nummarks = len(grid[0][0])
@@ -370,12 +387,15 @@ def determine_mark_thresholds_from_binned_data_array(grid, bpresent, dpoissonthr
             nthresh -= 1
         
         thresholds[nj] = max(int(math.ceil(dfoldthresh*dlambda)), nthresh, 1, int(math.ceil(dcountthresh)))
-    print(thresholds)    
+ 
     return thresholds
 
 
 def determine_mark_thresholds_from_binned_data_array_against_control(grid, gridcontrol, bpresent, bpresentcontrol, dpoissonthresh, dfoldthresh, bcontainsthresh, dcountthresh):
     """Determines the Poisson cutoffs based on the provided data.
+
+    This function calculates the thresholds for each mark by comparing the binned data array against the control data.
+    It uses the Poisson distribution to determine the thresholds based on various parameters.
 
     Args:
         grid (numpy.ndarray): The integer data values from which to determine the Poisson cutoffs.
@@ -384,11 +404,24 @@ def determine_mark_thresholds_from_binned_data_array_against_control(grid, gridc
         bpresentcontrol (numpy.ndarray): A vector indicating which indices of 'gridcontrol' to include in the analysis.
         dpoissonthresh (float): The tail probability threshold on the Poisson distribution.
         dfoldthresh (float): The fold threshold required for a present call.
-        bcontainsthresh (bool): If True, the Poisson cutoff should be the highest value that still contains the 'dpoissonthresh' probability. If False, it requires strictly greater.
+        bcontainsthresh (bool): If True, the Poisson cutoff should be the highest value that still contains the 'dpoissonthresh' probability. 
+                                If False, it requires strictly greater.
         dcountthresh (float): The absolute signal threshold for a present call.
 
     Returns:
         thresholds (list): Each element in this list represents the Poisson cutoff for a specific mark.
+
+    Calculation Details:
+        - Initializes variables and data structures.
+        - Computes the total number of reads for each mark and its matched control.
+        - Determines the maximum control value found for each mark.
+        - Determines the background control values encountered for each mark.
+        - Calculates thresholds for each mark based on the observed data and control values.
+
+    Note:
+        - The thresholds are computed based on the Poisson distribution and various parameters provided.
+        - The function assumes that the input arrays (grid and gridcontrol) have compatible dimensions and structure.
+
     """    
     dcumthreshold = 1 - dpoissonthresh
 
@@ -471,7 +504,32 @@ def determine_mark_thresholds_from_binned_data_array_against_control(grid, gridc
 
 
 def window_sum_grid(gridcontrol, sumgridcontrol, nflankwidthcontrol):
-    # iterates over chromosome, bin position, and mark
+    """Calculates the windowed sum of values in the control grid.
+
+    This function iterates over chromosomes, bin positions, and marks in the control grid. For each bin position,
+    it sums the values within a window defined by the flank width. The resulting sum is stored in the corresponding
+    position of the sum grid.
+
+    Args:
+        gridcontrol (list): The control grid containing integer data values.
+        sumgridcontrol (list): The sum grid for storing the calculated sums.
+        nflankwidthcontrol (int): The flank width for the window (inclusive).
+
+    Returns:
+        sumgridcontrol (list): Updated sum grid with calculated sums.
+
+    Iteration Details:
+        - Iterates over each chromosome in the control grid.
+        - For each chromosome, iterates over bin positions and marks.
+        - Calculates the windowed sum for each bin position and mark.
+        - Updates the sum grid with the calculated sums.
+
+    Note:
+        - The flank width determines the number of neighboring positions on each side of a bin to include in the sum.
+          For example, if nflankwidthcontrol is set to 5, it includes 5 positions to the left and 5 positions to the
+          right of the current bin (including the current bin itself).
+    """
+
     for nchrom in range(len(gridcontrol)):
         gridcontrol_nchrom = gridcontrol[nchrom]
         sumgridcontrol_nchrom = sumgridcontrol[nchrom]
@@ -489,3 +547,4 @@ def window_sum_grid(gridcontrol, sumgridcontrol, nflankwidthcontrol):
                         nsum += nval
 
                 sumgridcontrol_nchrom[nbin][nmark] = nsum
+    return sumgridcontrol
