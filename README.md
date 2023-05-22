@@ -35,7 +35,7 @@ Required parameters:
 
 Optional parameters:
 
-* `-o <outdir>`: Path to output directory where structure <outdir>/1_subsample <outdir>/2_binarise and output files will be created. Directory will be created if it does not exist. Default: current working directory.  
+* `--outdir/-o <outdir>`: Path to output directory where structure `<outdir>/1_subsample/` `<outdir>/2_binarise/` and output files will be created. Directory will be created if it does not exist. Default: current working directory.  
 * `--increment/-i <int>`: Amount of reads/read pairs by which to incrementally subsample. e.g. If left to default the whole dataset will be subsampled to 50000000, 100000000, 150000000 etc. Default: 50000000. 
 * `--genome/-g`: A two column tab delimited file with the first column being the chromosome and the second being the chromosome length. Genome assemblies hg18, hg19, hg38, mm9, mm10, rn5, rn6, danRer7, danRer10, dm3, dm6, ce6, and ce10 can be accessed by their genome assembly name (e.g. hg19). For other assemblies these can be
 obtained with the fetchChromSizes script available from the UCSC browser http://hgdownload.cse.ucsc.edu/admin/exe/
