@@ -2,18 +2,21 @@
 
 
 # ------------------------------------
-# python modules
+# modules
 # ------------------------------------
 
-import os
-import numpy as np
 import math
+import os
+import pathlib
+
+import numpy as np
 
 # ------------------------------------
 # Main function
 # ------------------------------------
 
-def make_binary_data_from_bed( n, options ):
+
+def make_binary_data_from_bed(n, options):
     """Binarize BED data, both directly and with control.
 
     Args:
@@ -49,21 +52,21 @@ def make_binary_data_from_bed( n, options ):
     ## set starting options
     nbinsize = 200
     bcontrol = False
-    szcell = f'{n}'
-    szmark = 'mark'
+    szcell = f"{n}"
+    szmark = "mark"
     hscells = set()
     hsmarks = set()
     hscells.add(szcell)
     hsmarks.add(szmark)
-    hmfiles = {}    
+    hmfiles = {}
     hmfilescontrol = {}
-    hmfiles[f'{szcell}\t{szmark}'] = [f'downsampled.{n}.bed']
+    hmfiles[f"{szcell}\t{szmark}"] = [f"downsampled.{n}.bed"]
     if not options.control:
         hscellnocontrol = hscells
         hmfilescellcontrol = {}
     else:
         hscellcontrol = hscells
-        hmfilescontrol[f'{szcell}\t{szmark}'] = ['downsampled.ctrl.bed']
+        hmfilescontrol[f"{szcell}\t{szmark}"] = ["downsampled.ctrl.bed"]
         bcontrol = True
 
     ## reads in the chromosome length information file
@@ -77,7 +80,7 @@ def make_binary_data_from_bed( n, options ):
     for szLine in allines:
         st = szLine.strip().split()
         if len(st) < 2:
-            raise ValueError("Invalid line found in " + options.szchromlengthfile)
+            raise ValueError(f"Invalid line found in {options.szchromlengthfile}")
         chrom = st[0]
         length = int(st[1])
         chroms.append(chrom)
@@ -93,7 +96,7 @@ def make_binary_data_from_bed( n, options ):
     # generates a three dimensional array with each chromosome, the lengths of each chr divided by binsize, and the number of marks (always 1 in complete)
     grid = np.empty((len(chroms),), dtype=np.ndarray)
     for ni in range(len(chroms)):
-        grid[ni] = np.zeros((lengths[ni]//nbinsize, nummarks), dtype=int)
+        grid[ni] = np.zeros((lengths[ni] // nbinsize, nummarks), dtype=int)
 
     gridcontrol = None
     sumgridcontrol = None
@@ -108,8 +111,7 @@ def make_binary_data_from_bed( n, options ):
 
     bpresentmarks = [False for _ in range(nummarks)]
 
-    #----------------------------------------
-
+    # ----------------------------------------
 
     for szcell in hscells:
         bpresent = [False for _ in range(len(chroms))]
@@ -129,46 +131,87 @@ def make_binary_data_from_bed( n, options ):
                 numcontrolmarks = nummarks
 
         # loading data for the cell type
-        grid = load_grid(grid, bpresent, bpresentmarks, marks, options.nshift, nbinsize, options.noffsetleft,
-                options.noffsetright, hmfiles, szcell, options.szmarkdir, hmchrom, 0, bcontrol)
+        grid = load_grid(
+            grid,
+            bpresent,
+            bpresentmarks,
+            marks,
+            options.nshift,
+            nbinsize,
+            options.noffsetleft,
+            options.noffsetright,
+            hmfiles,
+            szcell,
+            options.szmarkdir,
+            hmchrom,
+            0,
+            bcontrol,
+        )
 
         if bcontrolfile:
             if gridcontrol[0] is None or len(gridcontrol[0][0]) != numcontrolmarks:
                 # reallocate if changing array size
                 # allowed to go between single and matched
                 for ni in range(len(chroms)):
-                    gridcontrol[ni] = np.ones((lengths[ni]//nbinsize, numcontrolmarks), dtype=int)
-                    sumgridcontrol[ni] = np.zeros((lengths[ni]//nbinsize, numcontrolmarks), dtype=int)
+                    gridcontrol[ni] = np.ones(
+                        (lengths[ni] // nbinsize, numcontrolmarks), dtype=int
+                    )
+                    sumgridcontrol[ni] = np.zeros(
+                        (lengths[ni] // nbinsize, numcontrolmarks), dtype=int
+                    )
 
             # we have control data loading cell type data for that
-            gridcontrol = load_grid(gridcontrol, bpresentcontrol, bpresentmarkscontrol, marks, options.nshift, nbinsize, options.noffsetleft, options.noffsetright,
-                    hmfilescontrol, szcell, options.szcontroldir, hmchrom, options.npseudocountcontrol, bcontrol)
-
-
+            gridcontrol = load_grid(
+                gridcontrol,
+                bpresentcontrol,
+                bpresentmarkscontrol,
+                marks,
+                options.nshift,
+                nbinsize,
+                options.noffsetleft,
+                options.noffsetright,
+                hmfilescontrol,
+                szcell,
+                options.szcontroldir,
+                hmchrom,
+                options.npseudocountcontrol,
+                bcontrol,
+            )
 
     nummarks_m1 = nummarks - 1
-
 
     if bcontrolfile:
         # binarization will be based on control data
 
         # smoothing control data
-        sumgridcontrol = window_sum_grid(gridcontrol, sumgridcontrol, options.nflankwidthcontrol)
+        sumgridcontrol = window_sum_grid(
+            gridcontrol, sumgridcontrol, options.nflankwidthcontrol
+        )
 
         # determiming thresholds for each mark and background depth
         thresholds = determine_mark_thresholds_from_binned_data_array_against_control(
-                grid, sumgridcontrol, bpresent, bpresentcontrol, options.dpoissonthresh, options.dfoldthresh, options.bcontainsthresh, options.dcountthresh
-            )
+            grid,
+            sumgridcontrol,
+            bpresent,
+            bpresentcontrol,
+            options.dpoissonthresh,
+            options.dfoldthresh,
+            options.bcontainsthresh,
+            options.dcountthresh,
+        )
         for nchrom in range(len(chroms)):
             if bpresent[nchrom] and bpresentcontrol[nchrom]:
-                szfile = os.path.join(options.szoutputbinarydir, szcell + "_" + chroms[nchrom] + "_binary.txt")
+                szfile = pathlib.Path(
+                    options.szoutputbinarydir,
+                    f"{szcell}_{chroms[nchrom]}_binary.txt",
+                )
                 print("Writing to file", szfile)
-                with open(szfile, 'w') as pw:
+                with open(szfile, "w") as pw:
                     # we have both primary and control data for the mark
-                    pw.write(szcell + "\t" + chroms[nchrom] + "\n")
+                    pw.write(f"{szcell}\t{chroms[nchrom]}\n")
                     for nmark in range(nummarks_m1):
-                        pw.write(marks[nmark] + "\t")
-                    pw.write(marks[nummarks_m1] + "\n")
+                        pw.write(f"{marks[nmark]}\t")
+                    pw.write(f"{marks[nummarks_m1]}\n")
 
                     grid_nchrom = grid[nchrom]
                     sumgridcontrol_nchrom = sumgridcontrol[nchrom]
@@ -185,7 +228,10 @@ def make_binary_data_from_bed( n, options ):
                             # printing one if count exceeds background threshold
                             if not bpresentmarks[nmark]:
                                 pw.write("2\t")
-                            elif (thresholds[nmark][ncontrolval] <= grid_nchrom_nbin[nmark]):
+                            elif (
+                                thresholds[nmark][ncontrolval]
+                                <= grid_nchrom_nbin[nmark]
+                            ):
                                 pw.write("1\t")
                             else:
                                 pw.write("0\t")
@@ -197,49 +243,83 @@ def make_binary_data_from_bed( n, options ):
 
                         if not bpresentmarks[nummarks_m1]:
                             pw.write("2\n")
-                        elif (thresholds[nummarks_m1][ncontrolval] <= grid_nchrom_nbin[nummarks_m1]):
+                        elif (
+                            thresholds[nummarks_m1][ncontrolval]
+                            <= grid_nchrom_nbin[nummarks_m1]
+                        ):
                             pw.write("1\n")
                         else:
                             pw.write("0\n")
 
-    else: ## if no control file
-        thresholds = determine_mark_thresholds_from_binned_data_array(grid, bpresent, options.dpoissonthresh, options.dfoldthresh, options.bcontainsthresh, options.dcountthresh)
-        count=0
-        total=0
+    else:  ## if no control file
+        thresholds = determine_mark_thresholds_from_binned_data_array(
+            grid,
+            bpresent,
+            options.dpoissonthresh,
+            options.dfoldthresh,
+            options.bcontainsthresh,
+            options.dcountthresh,
+        )
+        count = 0
+        total = 0
         for nchrom in range(len(chroms)):
             if bpresent[nchrom]:
-                szfile = os.path.join(options.szoutputbinarydir, szcell + "_" + chroms[nchrom] + "_binary.txt")
+                szfile = os.path.join(
+                    options.szoutputbinarydir,
+                    szcell + "_" + chroms[nchrom] + "_binary.txt",
+                )
                 print("Writing to file " + szfile)
-                with open(szfile, 'w') as pw:
-                    pw.write(szcell + "\t" + chroms[nchrom] + "\n")
-                    for nmark in range(len(marks)-1):
-                        pw.write(str(marks[nmark]) + "\t")
-                    pw.write(str(marks[nummarks_m1]) + "\n")
+                with open(szfile, "w") as pw:
+                    pw.write(f"{szcell}\t{chroms[nchrom]}\n")
+                    for nmark in range(len(marks) - 1):
+                        pw.write(f"{marks[nmark]}\t")
+                    pw.write(f"{marks[nummarks_m1]}\n")
                     grid_nchrom = grid[nchrom]
                     for nbin in range(len(grid_nchrom)):
                         grid_nchrom_nbin = grid_nchrom[nbin]
                         for nmark in range(nummarks_m1):
                             if not bpresentmarks[nmark]:
                                 pw.write("2\t")
-                            elif (thresholds[nmark] <= grid_nchrom_nbin[nmark]):
+                            elif thresholds[nmark] <= grid_nchrom_nbin[nmark]:
                                 pw.write("1\t")
                             else:
                                 pw.write("0\t")
                         if not bpresentmarks[nummarks_m1]:
                             pw.write("2\n")
-                        elif (thresholds[nummarks_m1] <= grid_nchrom_nbin[nummarks_m1]):
+                        elif thresholds[nummarks_m1] <= grid_nchrom_nbin[nummarks_m1]:
                             pw.write("1\n")
-                            count+=1
-                            total+=1
+                            count += 1
+                            total += 1
                         else:
                             pw.write("0\n")
-                            total+=1
+                            total += 1
     return count, total
 
-#--------------------------------------
 
-def load_grid(grid, bpresent, bpresentmarks, marks, nshift, nbinsize, noffsetleft, noffsetright, hmfiles, szcell, szmarkdir, hmchrom, ninitval, bcontrol):
+# --------------------------------------
+
+
+def load_grid(
+    grid,
+    bpresent,
+    bpresentmarks,
+    marks,
+    nshift,
+    nbinsize,
+    noffsetleft,
+    noffsetright,
+    hmfiles,
+    szcell,
+    szmarkdir,
+    hmchrom,
+    ninitval,
+    bcontrol,
+):
     """Converts read level data for a cell into integer count information.
+
+    This function populates the provided grid with data obtained from mark files. It iterates through mark files for each
+    cell type and mark, calculates the bin index for each data point, and updates the corresponding grid cell.
+
 
     Args:
         grid (numpy.ndarray): The array to load the read counts into.
@@ -259,12 +339,25 @@ def load_grid(grid, bpresent, bpresentmarks, marks, nshift, nbinsize, noffsetlef
 
     Returns:
         numpy.ndarray: The updated grid with the read counts.
+
+    Calculation Details:
+        - Initializes necessary variables and data structures.
+        - Iterates over each mark file for each cell type.
+        - Checks for the presence of control data or missing data and handles accordingly.
+        - Retrieves mark file data, extracts relevant information, and calculates the bin index.
+        - Updates the corresponding grid cell with the calculated index and mark information.
+        - Sets the presence flags for chromosomes and marks based on the loaded data.
+
+    Raises:
+        ValueError: If the column index exceeds the maximum index for the mark file data.
+        ValueError: If an invalid strand is encountered in the mark file data.
+
     """
     nummarks = len(grid[0][0])
     # columns
     nchromcol = 0
     nbegincol = 1
-    nendcol = nbegincol+1
+    nendcol = nbegincol + 1
     nstrandcol = -1
     nmaxindex = -1
     # going through all the mark files in each cell type
@@ -283,9 +376,13 @@ def load_grid(grid, bpresent, bpresentmarks, marks, nshift, nbinsize, noffsetlef
 
         if alfiles is None:
             if bcontrol:
-                print(f"Warning did not find control data for {szcell} {marks[nmark]} treating as missing")
+                print(
+                    f"Warning did not find control data for {szcell} {marks[nmark]} treating as missing"
+                )
             else:
-                print(f"Warning did not find data for {szcell} {marks[nmark]} treating as missing")
+                print(
+                    f"Warning did not find data for {szcell} {marks[nmark]} treating as missing"
+                )
 
             bpresentmarks[nmark] = False
             if not bcontrol:
@@ -297,34 +394,41 @@ def load_grid(grid, bpresent, bpresentmarks, marks, nshift, nbinsize, noffsetlef
                         grid_nchrom[nbin][nmark] = -1
         else:
             bpresentmarks[nmark] = True
-            print(len(alfiles))
             for nfile in range(len(alfiles)):
                 szfile = alfiles[nfile]
-                with open(os.path.join(szmarkdir, szfile), 'r') as brbed:
+                with open(os.path.join(szmarkdir, szfile), "r") as brbed:
                     for szLine in brbed:
                         szLineA = szLine.split()
                         szchrom = szLineA[nchromcol]
                         objInt = hmchrom.get(szchrom)
 
                         if nmaxindex >= len(szLineA):
-                            raise ValueError("Column index "+nmaxindex+" exceeds maximum index "+str(len(szLineA)-1)+" indices are 0-based")
+                            raise ValueError(
+                                f"Column index {nmaxindex} exceeds maximum index {len(szLineA) - 1} indices are 0-based"
+                            )
 
                         if objInt is not None:
                             nchrom = objInt
                             szstrand = szLineA[nstrandcol]
                             if szstrand == "+":
-                                nbin = (int(szLineA[nbegincol])-noffsetleft+nshift)//nbinsize
+                                nbin = (
+                                    int(szLineA[nbegincol]) - noffsetleft + nshift
+                                ) // nbinsize
                             elif szstrand == "-":
-                                nbin = (int(szLineA[nendcol])-noffsetright-nshift)//nbinsize
+                                nbin = (
+                                    int(szLineA[nendcol]) - noffsetright - nshift
+                                ) // nbinsize
                             else:
-                                raise ValueError(szstrand+" is an invalid strand!")
-                            if nbin>=0 and nbin<len(grid[nchrom]):
+                                raise ValueError(f"{szstrand} is an invalid strand!")
+                            if nbin >= 0 and nbin < len(grid[nchrom]):
                                 grid[nchrom][nbin][nmark] += 1
                                 bpresent[nchrom] = True
     return grid
 
 
-def determine_mark_thresholds_from_binned_data_array(grid, bpresent, dpoissonthresh, dfoldthresh, bcontainsthresh, dcountthresh):
+def determine_mark_thresholds_from_binned_data_array(
+    grid, bpresent, dpoissonthresh, dfoldthresh, bcontainsthresh, dcountthresh
+):
     """Determines the Poisson cutoffs based on the provided data.
 
     This function calculates the thresholds for each mark based on the provided binned data array. It uses the Poisson
@@ -352,10 +456,8 @@ def determine_mark_thresholds_from_binned_data_array(grid, bpresent, dpoissonthr
 
     Note:
         - The thresholds are computed based on the Poisson distribution and various parameters provided.
-        - The function assumes that the input array (grid) has compatible dimensions and structure with other parameters.
-        - The function assumes that the math module is imported for mathematical calculations.
 
-    """    
+    """
     dcumthreshold = 1 - dpoissonthresh
     nummarks = len(grid[0][0])
     ntotallocs = 0
@@ -376,22 +478,36 @@ def determine_mark_thresholds_from_binned_data_array(grid, bpresent, dpoissonthr
         dcum = 0
         nthresh = 0
         dlogfactorial = 0
-        
+
         while dcum <= dcumthreshold:
-            dprob = math.exp(math.log(dlambda)*nthresh - dlambda - dlogfactorial)
+            dprob = math.exp(math.log(dlambda) * nthresh - dlambda - dlogfactorial)
             dcum += dprob
             nthresh += 1
             dlogfactorial += math.log(nthresh)
 
         if bcontainsthresh:
             nthresh -= 1
-        
-        thresholds[nj] = max(int(math.ceil(dfoldthresh*dlambda)), nthresh, 1, int(math.ceil(dcountthresh)))
- 
+
+        thresholds[nj] = max(
+            int(math.ceil(dfoldthresh * dlambda)),
+            nthresh,
+            1,
+            int(math.ceil(dcountthresh)),
+        )
+
     return thresholds
 
 
-def determine_mark_thresholds_from_binned_data_array_against_control(grid, gridcontrol, bpresent, bpresentcontrol, dpoissonthresh, dfoldthresh, bcontainsthresh, dcountthresh):
+def determine_mark_thresholds_from_binned_data_array_against_control(
+    grid,
+    gridcontrol,
+    bpresent,
+    bpresentcontrol,
+    dpoissonthresh,
+    dfoldthresh,
+    bcontainsthresh,
+    dcountthresh,
+):
     """Determines the Poisson cutoffs based on the provided data.
 
     This function calculates the thresholds for each mark by comparing the binned data array against the control data.
@@ -404,7 +520,7 @@ def determine_mark_thresholds_from_binned_data_array_against_control(grid, gridc
         bpresentcontrol (numpy.ndarray): A vector indicating which indices of 'gridcontrol' to include in the analysis.
         dpoissonthresh (float): The tail probability threshold on the Poisson distribution.
         dfoldthresh (float): The fold threshold required for a present call.
-        bcontainsthresh (bool): If True, the Poisson cutoff should be the highest value that still contains the 'dpoissonthresh' probability. 
+        bcontainsthresh (bool): If True, the Poisson cutoff should be the highest value that still contains the 'dpoissonthresh' probability.
                                 If False, it requires strictly greater.
         dcountthresh (float): The absolute signal threshold for a present call.
 
@@ -420,9 +536,8 @@ def determine_mark_thresholds_from_binned_data_array_against_control(grid, gridc
 
     Note:
         - The thresholds are computed based on the Poisson distribution and various parameters provided.
-        - The function assumes that the input arrays (grid and gridcontrol) have compatible dimensions and structure.
 
-    """    
+    """
     dcumthreshold = 1 - dpoissonthresh
 
     nummarks = len(grid[0][0])
@@ -488,7 +603,9 @@ def determine_mark_thresholds_from_binned_data_array_against_control(grid, gridc
                 dlogfactorial = 0
 
                 while dcum <= dcumthreshold:
-                    dprob = math.exp(math.log(dlambda) * nthresh - dlambda - dlogfactorial)
+                    dprob = math.exp(
+                        math.log(dlambda) * nthresh - dlambda - dlogfactorial
+                    )
                     dcum += dprob
                     nthresh += 1
                     dlogfactorial += math.log(nthresh)
@@ -497,10 +614,10 @@ def determine_mark_thresholds_from_binned_data_array_against_control(grid, gridc
                     # decreasing to include the dpoissonthreshold probability
                     nthresh -= 1
 
-                thresholds_nmark[nbackground] = max(int(dfoldthresh * dlambda), nthresh, int(dcountthresh))
+                thresholds_nmark[nbackground] = max(
+                    int(dfoldthresh * dlambda), nthresh, int(dcountthresh)
+                )
     return thresholds
-
-
 
 
 def window_sum_grid(gridcontrol, sumgridcontrol, nflankwidthcontrol):
@@ -541,7 +658,7 @@ def window_sum_grid(gridcontrol, sumgridcontrol, nflankwidthcontrol):
 
             for nmark in range(len(sumgridcontrol_nchrom_nbin)):
                 nsum = 0
-                for nrow in range(nstart, nend+1):
+                for nrow in range(nstart, nend + 1):
                     nval = gridcontrol_nchrom[nrow][nmark]
                     if nval > 0:
                         nsum += nval
