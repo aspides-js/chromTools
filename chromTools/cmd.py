@@ -6,9 +6,7 @@
 # ------------------------------------
 
 import gzip as gz
-import logging
 import multiprocessing as mp
-import os
 import shutil
 import sys
 import tempfile
@@ -22,14 +20,10 @@ import mmh3
 import numpy as np
 import pandas as pd
 from MACS3.Commands.callpeak_cmd import load_frag_files_options, load_tag_files_options
-from MACS3.IO.Parser import BEDParser, BEDPEParser
 from MACS3.Signal.PeakDetect import PeakDetect
 
 from chromTools.chmm_cmd import make_binary_data_from_bed
 from chromTools.validate import assert_compressed, chmm_validator, macs_validator
-
-
-# from chromTools.bootstrap_cmd import *
 
 
 # ------------------------------------
@@ -41,11 +35,6 @@ def run(options):
     Args:
             options (Namespace object): Command line options
     """
-    # options
-    # subdir = options.subdir
-    # bindir = options.bindir
-    # increment = options.increment
-
     ## Concatenating
     cat_bed(options.files, options.subdir, options.info)
     total, nfile = wc(
@@ -204,8 +193,7 @@ def downsample(n, options, total):
             reads: Number of reads in file
     """
     proportion = (options.increment * n) / total
-    file = f"downsampled.{n}.bed"
-    outfile = pathlib.Path(options.subdir / file)
+    outfile = pathlib.Path(options.subdir / f"downsampled.{n}.bed")
     reads = 0
     a = params(proportion)
     with open(outfile, "w") as outf:
