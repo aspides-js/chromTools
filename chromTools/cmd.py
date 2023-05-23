@@ -2,388 +2,404 @@
 
 
 # ------------------------------------
-# python modules
+# modules
 # ------------------------------------
 
-import sys, os, time
-import shutil
 import gzip as gz
-from subprocess import check_output
-import multiprocessing as mp
-import matplotlib.pyplot as plt
-import pandas as pd
-import numpy as np
-import lmfit
-import mmh3
 import logging
+import multiprocessing as mp
+import os
+import shutil
+import sys
 import tempfile
+import time
+from subprocess import check_output
+import pathlib
 
-from MACS3.Signal.PeakDetect import PeakDetect
+import lmfit
+import matplotlib.pyplot as plt
+import mmh3
+import numpy as np
+import pandas as pd
+from MACS3.Commands.callpeak_cmd import load_frag_files_options, load_tag_files_options
 from MACS3.IO.Parser import BEDParser, BEDPEParser
-from MACS3.Commands.callpeak_cmd import load_frag_files_options
+from MACS3.Signal.PeakDetect import PeakDetect
 
-# ------------------------------------
-# own python modules
-# ------------------------------------
+from chromTools.chmm_cmd import make_binary_data_from_bed
+from chromTools.validate import assert_compressed, chmm_validator, macs_validator
 
-from chromTools.validate import assert_compressed, macs_validator
-from chromTools.bootstrap_cmd import *
+
+# from chromTools.bootstrap_cmd import *
+
 
 # ------------------------------------
 # Main function
 # ------------------------------------
-def run( options ):
-	"""The Main function pipeline for chromTools
+def run(options):
+    """The Main function pipeline for chromTools
 
-	Args:
-		options (Namespace object): Command line options
-	"""
-	# options
-	#subdir = options.subdir
-	#bindir = options.bindir
-	#increment = options.increment
+    Args:
+            options (Namespace object): Command line options
+    """
+    # options
+    # subdir = options.subdir
+    # bindir = options.bindir
+    # increment = options.increment
 
-	## Concatenating
-	cat_bed( options.files, options.subdir, options.info)
-	total, nfile = wc( options.increment, options.subdir, options.info, options.warn, options.paired)
+    ## Concatenating
+    cat_bed(options.files, options.subdir, options.info)
+    total, nfile = wc(
+        options.increment, options.subdir, options.info, options.warn, options.paired
+    )
 
-	## Downsampling
-	start_time = time.time()
-	options.start_time = start_time
-	options.info('Downsampling...')
-	options.info("CPU number: "+str(mp.cpu_count()))
+    ## Downsampling
+    start_time = time.time()
+    options.start_time = start_time
+    options.info("Downsampling...")
+    options.info(f"CPU number: {str(mp.cpu_count())}")
 
-	
-	pool = mp.Pool()
-	args = [(n, options, total) for n in range(1,nfile)] # nfile should be number calculated by wc()
+    pool = mp.Pool()
+    args = [
+        (n, options, total) for n in range(1, nfile)
+    ]  # nfile should be number calculated by wc()
 
-	r = {} # initiate empty dictionary
-	for res in pool.starmap(downsample, args):
-		r.setdefault(res[0], [])
-		r[res[0]].append(res[1])
-		options.info("--- %s seconds ---" % (time.time() - start_time))
+    r = {}  # initiate empty dictionary
+    for res in pool.starmap(downsample, args):
+        r.setdefault(res[0], [])
+        r[res[0]].append(res[1])
+        options.info(f"--- {(time.time() - start_time)} seconds ---")
 
-	print(r)
-	## Binarising
-	options.info('Macs binarising...')
-	args = [(n, options) for n in range(0,nfile)] # nfile should be number calculated by wc()
-	options.info('args calcualted')
-	r['0']=[total]
-	for res in pool.starmap(use_macs, args):
-		r.setdefault(res[0], [])
-		r[res[0]].append(res[1])
-	options.info("--- %s seconds ---" % (time.time() - start_time))
+    print(r)
+    ## Binarising
+    options.info("CHMM binarising...")
+    args = [
+        (n, options) for n in range(0, nfile)
+    ]  # nfile should be number calculated by wc()
+    r["0"] = [total]
+    for res in pool.starmap(use_chmm, args):
+        r.setdefault(res[0], [])
+        r[res[0]].append(res[1])
+    options.info(f"--- {(time.time() - start_time)} seconds ---")
 
-	print(r)
-	param_write(r, options.outdir)
-	param_plot(r, options.outdir)
-	
-	print('Complete')
+    print(r)
+    param_write(r, options.outdir)
+    param_plot(r, options.outdir)
+
+    print("Complete")
 
 
+# --------------------------------------------------------------------------------#
 
-#--------------------------------------------------------------------------------#
 
 def cat_bed(files, subdir, info):
-	"""Concatenate compressed or uncompressed files into downsampled.0.bed
+    """Concatenate compressed or uncompressed files into downsampled.0.bed
 
-	Args:
-		files (str): Files to concatenate
-		subdir (str): Path to subsample directory
-		info (_type_): Logging 
-	"""
-	info("Concatenating files...")
-	start_time = time.time()
-	with open(subdir+"downsampled.0.bed",'wb') as wfd:
-		for f in files:
-			if assert_compressed(f):
-				print('File is compressed')
-				with gz.open(f,'rb') as fd:
-					shutil.copyfileobj(fd, wfd)
-			else:
-				with open(f,'rb') as fd:
-					shutil.copyfileobj(fd, wfd)
-	info("--- %s seconds ---" % (time.time() - start_time))
-
+    Args:
+            files (str): Files to concatenate
+            subdir (str): Path to subsample directory
+            info (_type_): Logging
+    """
+    info("Concatenating files...")
+    start_time = time.time()
+    with open(pathlib.Path(subdir / "downsampled.0.bed"), "wb") as wfd:
+        for f in files:
+            if assert_compressed(f):
+                print("File is compressed")
+                with gz.open(f, "rb") as fd:
+                    shutil.copyfileobj(fd, wfd)
+            else:
+                with open(f, "rb") as fd:
+                    shutil.copyfileobj(fd, wfd)
+    info(f"--- {(time.time() - start_time)} seconds ---")
 
 
 def wc(increment, subdir, info, warn, paired):
-	"""Count total read number
+    """Count total read number
 
-	Args:
-		increment (int): Amount to increase each subsampled file by
-		subdir (str): Path to subsample directory
-		info (_type_): Logging 
-		warn (_type_): Logging 
-		paired (bool): Paired end reads
+    Args:
+            increment (int): Amount to increase each subsampled file by
+            subdir (str): Path to subsample directory
+            info (_type_): Logging
+            warn (_type_): Logging
+            paired (bool): Paired end reads
 
-	Returns:
-		total (int): Total number of reads/read pairs in downsampled.0.bed
-		nfile (int): Number of files that will be generated
-	"""
-	start_time = time.time()
-	info("Calculating total read number...")
-	total = int(check_output(["wc", "-l", subdir+"downsampled.0.bed"]).split()[0])
+    Returns:
+            total (int): Total number of reads/read pairs in downsampled.0.bed
+            nfile (int): Number of files that will be generated
+    """
+    start_time = time.time()
+    info("Calculating total read number...")
+    total = int(check_output(["wc", "-l", f"{subdir}/downsampled.0.bed"]).split()[0])
 
-	if paired:
-		total = total/2
+    if paired:
+        total = total / 2
 
-	info("--- %s seconds ---" % (time.time() - start_time))
+    info(f"--- {(time.time() - start_time)} seconds ---")
 
-	nfile = int(total/increment)
+    nfile = int(total / increment)
 
-	# give warning if nfile is very high
-	if nfile > 100:
-		warn("Number of downsampled files will be %s" % nfile)
+    # give warning if nfile is very high
+    if nfile > 100:
+        warn(f"Number of downsampled files will be {nfile}")
 
-	if total == 0:
-		warn("Total number of lines is equal to 0. Are your input files empty? Terminating.")
-		sys.exit(1)
-		
-	return total, nfile
+    if total == 0:
+        warn(
+            "Total number of lines is equal to 0. Are your input files empty? Terminating."
+        )
+        sys.exit(1)
 
-#--------------------------------------------------------------------------------#
+    return total, nfile
+
+
+# --------------------------------------------------------------------------------#
+
 
 def params(proportion):
-	"""Calculate a value between a range to reflect proportion of reads kept
+    """Calculate a value between a range to reflect proportion of reads kept
 
-	Args:
-		proportion (int): Proportion of reads to subsample from whole dataset
+    Args:
+            proportion (int): Proportion of reads to subsample from whole dataset
 
-	Returns:
-		maxHashValue (int): Threshold above which reads are discarded
-	"""
-	max_size = sys.maxsize
-	min_size = -sys.maxsize - 1
-	maxRange = max_size - min_size
-	maxHashValue = min_size + round(maxRange * proportion)
-	#return min_size, max_size, maxHashValue
-	return maxHashValue
+    Returns:
+            maxHashValue (int): Threshold above which reads are discarded
+    """
+    max_size = sys.maxsize
+    min_size = -sys.maxsize - 1
+    maxRange = max_size - min_size
+    maxHashValue = min_size + round(maxRange * proportion)
+    return maxHashValue
 
 
 def discard(maxHashValue, seed, line):
-	"""Generate a random hash from readname using seed. If number above proportional cut-off (True), discard read.
+    """Generate a random hash from readname using seed. If number above proportional cut-off (True), discard read.
 
-	Args:
-		maxHashValue (int): Threshold above which reads are discarded
-		seed (int): Random seed
-		line (str): Read/line in file
+    Args:
+            maxHashValue (int): Threshold above which reads are discarded
+            seed (int): Random seed
+            line (str): Read/line in file
 
-	Returns:
-		bool: Boolean specifying if readname is below or above discard threshold
-	"""
-	readname=line.split('\t')[3].rsplit('/')[0] # extract readname, remove everything after '/' (read pair if paired)
-	hashInt=mmh3.hash64(readname, seed)
-	return hashInt[0] > maxHashValue
+    Returns:
+            bool: Boolean specifying if readname is below or above discard threshold
+    """
+    readname = line.split("\t")[3].rsplit("/")[
+        0
+    ]  # extract readname, remove everything after '/' (read pair if paired)
+    hashInt = mmh3.hash64(readname, seed)
+    return hashInt[0] > maxHashValue
 
 
 def downsample(n, options, total):
-	"""	Downsample a bed file. For each read pair, a random value is assigned between the range. 
-	The proportion is used to calculate a maximum acceptable value within the range. Records 
-	whose value is below the limit are written to outfile, records whose hash value is above 
-	the limit are discarded.
+    """Downsample a bed file. For each read pair, a random value is assigned between the range.
+    The proportion is used to calculate a maximum acceptable value within the range. Records
+    whose value is below the limit are written to outfile, records whose hash value is above
+    the limit are discarded.
 
-	Args:
-		n (int): Numerical descriptor of file
-		options (Namespace object): Command line arguments
-		total (int): Total number of reads/read pairs in downsampled.0.bed
+    Args:
+            n (int): Numerical descriptor of file
+            options (Namespace object): Command line arguments
+            total (int): Total number of reads/read pairs in downsampled.0.bed
 
-	Returns:
-		n (int): Numerical descriptor of file
-		reads: Number of reads in file
-	"""
-	proportion = (options.increment*n)/total
-	outfile = options.subdir+'downsampled.'+str(n)+'.bed'
-	reads = 0
-	a=params(proportion)
-	with open(outfile, 'w') as outf:
-		with open(options.subdir+"downsampled.0.bed",'r') as f:
-			for line in f:
-				if (discard(a, options.seed, line)):
-					continue
-				else:
-					outf.write(line)
-					reads+=1
-	if options.paired:
-		reads=reads/2
-	return str(n), reads
-
-#--------------------------------------------------------------------------------#
-
+    Returns:
+            n (int): Numerical descriptor of file
+            reads: Number of reads in file
+    """
+    proportion = (options.increment * n) / total
+    file = f"downsampled.{n}.bed"
+    outfile = pathlib.Path(options.subdir / file)
+    reads = 0
+    a = params(proportion)
+    with open(outfile, "w") as outf:
+        with open(pathlib.Path(options.subdir / "downsampled.0.bed"), "r") as f:
+            for line in f:
+                if discard(a, options.seed, line):
+                    continue
+                else:
+                    outf.write(line)
+                    reads += 1
+    if options.paired:
+        reads = reads / 2
+    return str(n), reads
 
 
-def region_limit(region, filedir):
-	chrom = region.split(':')[0]
-	file = [i for i in filedir if "cell_"+chrom in i][0]
-	number = region.split(':')[1].split('-')
-	number = [int(int(n)/200)-1 for n in number]
-
-	chr_file=os.path.dirname(file)+"/"+chrom+"_region_binary.txt"
-	with open(chr_file, "w") as outf:
-		with open(file, 'r') as f:
-			outf.write(next(f))
-			outf.write(next(f))
-			check = f.readlines()
-		check = ''.join(check[number[0]:number[1]])
-		outf.write(check)
-	filedir = [chr_file]
-	return filedir
+# --------------------------------------------------------------------------------#
 
 
-#--------------------------------------------------------------------------------#
+def use_macs(n, options):
+    """Uses macs3 peak calling functionality to identify areas in the genome that
+    have been enriched with aligned reads.
 
-def use_macs( n,  options ):
-	"""Uses macs3 peak calling functionality to identify areas in the genome that 
-	have been enriched with aligned reads. 
+    Args:
+            n (int): Numerical descriptor of file
+            options (Namespace object): Command line arguments
 
-	Args:
-		n (int): Numerical descriptor of file
-		options (Namespace object): Command line arguments
+    Returns:
+            n (int): Numerical descriptor of file
+            (int): Sum of counted peaks / total chromosome length
+    """
+    options = macs_validator(n, options)
 
-	Returns:
-		n (int): Numerical descriptor of file
-		(int): Sum of counted peaks / total chromosome length
-	"""
-	options = macs_validator(n, options)
-	options.info('load frag files: '+str(n)+'.bed')
+    # if set by user, use alternative tempdir
+    if options.tempdir:
+        tempfile.tempdir = options.tempdir
 
-	# if set by user, use alternative tempdir
-	if options.tempdir:
-		tempfile.tempdir = options.tempdir
+    if options.paired:
+        (treat, control) = load_frag_files_options(options)
+    else:
+        (treat, control) = load_tag_files_options(options)
 
-	(treat, control) = load_frag_files_options (options)
-	options.info("--- %s seconds ---" % (time.time() - options.start_time))
+    t0 = treat.total
+    t1 = t0
+    options.d = options.tsize
 
-	t0 = treat.total
-	t1 = t0
-	options.d = options.tsize
+    peakdetect = PeakDetect(treat=treat, control=control, opt=options)
 
-	peakdetect = PeakDetect(treat = treat, control = control, opt = options)
-	print(str(n)+'.bed')
-	options.info("--- %s seconds ---" % (time.time() - options.start_time))
-	peakdetect.call_peaks()
-	print(str(n)+'.bed')
-	options.info("--- %s seconds ---" % (time.time() - options.start_time))
+    peakdetect.call_peaks()
 
-	# filter out low fe peaks
-	#peakdetect.peaks.filter_fc( fc_low = options.fecutoff )
+    # filter out low fe peaks
+    # peakdetect.peaks.filter_fc( fc_low = options.fecutoff )
 
+    ofhd_bed = open(options.peakBed, "w")
+    peakdetect.peaks.write_to_narrowPeak(
+        ofhd_bed,
+        name_prefix=b"%s_peak_",
+        name=options.name.encode(),
+        score_column="qscore",
+        trackline=False,
+    )
+    ofhd_bed.close()
 
-	ofhd_bed = open( options.peakBed, "w" )
-	peakdetect.peaks.write_to_narrowPeak (ofhd_bed, name_prefix=b"%s_peak_", name=options.name.encode(), score_column="qscore", trackline=False )
-	ofhd_bed.close()
-	
-	return str(n), count_peakmark( options )
+    return str(n), count_peakmark(options)
 
 
-def count_peakmark( options ):
-	"""Count the number of base pairs overlapping peaks per chromosome
+def count_peakmark(options):
+    """Count the number of base pairs overlapping peaks per chromosome
 
-	Args:
-		options (Namespace object): Command line arguments
+    Args:
+            options (Namespace object): Command line arguments
 
-	Returns:
-		(int): Sum of counted peaks / total chromosome length
-	"""
-	g = chr_len(options.genome)
-	with open(options.peakBed, "r") as f:
-		for line in f:
-			chrom = line.split('\t')[0]
-			num = int(line.split('\t')[2]) - int(line.split('\t')[1])
-			g[chrom].append(num)
+    Returns:
+            (int): Sum of counted peaks / total chromosome length
+    """
+    g = chr_len(options.genome)
+    with open(options.peakBed, "r") as f:
+        for line in f:
+            chrom = line.split("\t")[0]
+            num = int(line.split("\t")[2]) - int(line.split("\t")[1])
+            g[chrom].append(num)
 
-	if 0 in [sum(x[1:]) for x in g.values()]:
-		options.warn("0 values in chromosome(s) peak count may indicate incorrect chromosome length file.")
+    if 0 in [sum(x[1:]) for x in g.values()]:
+        options.warn(
+            "0 values in chromosome(s) peak count may indicate incorrect chromosome length file."
+        )
 
-	return (sum([sum(x[1:]) for x in g.values()]))/(sum([x[0] for x in g.values()])) #sum of counted peaks / total chromosome length
+    return (sum([sum(x[1:]) for x in g.values()])) / (
+        sum([x[0] for x in g.values()])
+    )  # sum of counted peaks / total chromosome length
 
 
 def chr_len(genome):
-	"""Generate dictionary from genome chromosome length files
+    """Generate dictionary from genome chromosome length files
 
-	Args:
-		genome (str): Path to genome chromosome length file
+    Args:
+            genome (str): Path to genome chromosome length file
 
-	Returns:
-		g (dict): {CHR number : length}
-	"""
-	g = {}
-	with open(genome) as f:
-		for line in f:
-			(key, val) = line.split()
-			g.setdefault(key, [])
-			g[key].append(int(val))
-	return g
+    Returns:
+            g (dict): {CHR number : length}
+    """
+    g = {}
+    with open(genome) as f:
+        for line in f:
+            (key, val) = line.split()
+            g.setdefault(key, [])
+            g[key].append(int(val))
+    return g
 
-#--------------------------------------------------------------------------------#
+
+# --------------------------------------------------------------------------------#
+
+
+def use_chmm(n, options):
+    options = chmm_validator(options)
+    print(options.szchromlengthfile)
+    count, total = make_binary_data_from_bed(n, options)
+    print(count)
+    print(total)
+    return str(n), count / total
+
+
+# --------------------------------------------------------------------------------#
+
 
 def param_write(r, outdir):
-	"""Write the output to text file (tsv)
+    """Write the output to text file (tsv)
 
-	Args:
-		r (dict): {Subsampled file : [<Number of reads>, <Proportion of genome bound>] }
-		outdir (str): Output directory
-	"""
-	with open(outdir+"/completeness.txt", 'w') as f:
-		for key, value in r.items():
-			f.write('%s\t%s\t%s\n' % (key, value[0], value[1]))
+    Args:
+            r (dict): {Subsampled file : [<Number of reads>, <Proportion of genome bound>] }
+            outdir (str): Output directory
+    """
+    with open(pathlib.Path(outdir / "completeness.txt"), "w") as f:
+        for key, value in r.items():
+            f.write(f"{key}\t{value[0]}\t{value[1]}\n")
 
 
 def param_plot(r, outdir):
-	"""Plot the output to graph and call the Micheal-Menten function
+    """Plot the output to graph and call the Micheal-Menten function
 
-	Args:
-		r (dict): {Subsampled file : [<Number of reads>, <Proportion of genome bound>] }
-		outdir (str): Output directory
-	"""
-	df = pd.DataFrame(r)
-	plt.figure(figsize=(10,6), tight_layout=True)
-	plt.plot(df.loc[0].tolist(), df.loc[1].tolist(), 's-')
-	plt.xlabel('Number of Reads')
-	plt.ylabel('Proportion of marks')
-	plt.savefig(outdir+'/completeplot.jpg')
+    Args:
+            r (dict): {Subsampled file : [<Number of reads>, <Proportion of genome bound>] }
+            outdir (str): Output directory
+    """
+    df = pd.DataFrame(r)
+    plt.figure(figsize=(10, 6), tight_layout=True)
+    plt.plot(df.loc[0].tolist(), df.loc[1].tolist(), "s-")
+    plt.xlabel("Number of Reads")
+    plt.ylabel("Proportion of marks")
+    plt.savefig(pathlib.Path(outdir / "completeplot.jpg"))
 
-	mm(df, outdir)
+    mm(df, outdir)
 
 
-#-------------------------------------------------------------------------------#
+# -------------------------------------------------------------------------------#
+
 
 def v(s, Vm, Km):
-	return (Vm * s) / (Km + s)
+    return (Vm * s) / (Km + s)
+
 
 def residuals(p, x, y):
-	Vm = p['Vm']
-	Km = p['Km']
-	fi = v(x, Vm, Km)
-	return y - fi
+    Vm = p["Vm"]
+    Km = p["Km"]
+    fi = v(x, Vm, Km)
+    return y - fi
+
 
 def mm(df, outdir):
-	"""Calculate the Michealis-Menten kinetics and plot to graph
+    """Calculate the Michealis-Menten kinetics and plot to graph
 
-	Args:
-		df (pandas dataframe): [<Subsampled file>] [<Number of reads>] [<Proportion of genome bound>]
-		outdir (str): Output directory
-	"""
-	data = np.array(df)
+    Args:
+            df (pandas dataframe): [<Subsampled file>] [<Number of reads>] [<Proportion of genome bound>]
+            outdir (str): Output directory
+    """
+    data = np.array(df)
 
-	params = lmfit.Parameters()
-	params.add('Vm', value = 1, min=0, max=5000000000)
-	params.add('Km', value = 1, min=0, max=5000000000)
+    params = lmfit.Parameters()
+    params.add("Vm", value=1, min=0, max=5_000_000_000)
+    params.add("Km", value=1, min=0, max=5_000_000_000)
 
-	result = lmfit.minimize(residuals, params, args=(data[0], data[1]))
+    result = lmfit.minimize(residuals, params, args=(data[0], data[1]))
 
-	fm= np.linspace(0, max(data[0]), 100)
-	plt.figure(figsize=(10,6), tight_layout=True)
-	plt.scatter(df.loc[0].tolist(), df.loc[1].tolist(), color = 'k')
-	plt.plot(fm, v(fm, result.params['Vm'].value, result.params['Km'].value), 'k')
-	plt.xlabel('[S] (reads)')
-	plt.ylabel('v (proportion)')
-	plt.axhline(y = result.params['Vm'].value, linestyle = '-')
-	plt.title(label = 'Vm: '+str(result.params['Vm'].value))
-	plt.savefig(outdir+'/mmplot.jpg')
+    fm = np.linspace(0, max(data[0]), 100)
+    plt.figure(figsize=(10, 6), tight_layout=True)
+    plt.scatter(df.loc[0].tolist(), df.loc[1].tolist(), color="k")
+    plt.plot(fm, v(fm, result.params["Vm"].value, result.params["Km"].value), "k")
+    plt.xlabel("[S] (reads)")
+    plt.ylabel("v (proportion)")
+    plt.axhline(y=result.params["Vm"].value, linestyle="-")
+    plt.title(label=f'Vm: {result.params["Vm"].value}')
+    plt.savefig(pathlib.Path(outdir / "mmplot.jpg"))
 
-	with open(outdir+"/mm.txt", 'w') as f:
-		f.write(str(result.params['Vm'].value)+"\t"+str(result.params['Km'].value))
+    with open(pathlib.Path(outdir / "mm.txt"), "w") as f:
+        f.write(f'{result.params["Vm"].value}\t{result.params["Km"].value}')
 
-#-------------------------------------------------------------------------------#
 
+# -------------------------------------------------------------------------------#
