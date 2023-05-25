@@ -53,7 +53,7 @@ def run_bootstrap_chmm(options):
 
 	pool = mp.Pool()
 	args = [(n, options) for n in range(1, options.nfile)] 
-	#pool.starmap(split, args)
+	pool.starmap(split, args)
 	pool.starmap(learn_model, args)
 	pool.close()
 	options.info("--- %s seconds ---" % (time.time() - start_time))
@@ -110,8 +110,8 @@ def binarise(n, options):
 	dirDict = {options.n1metadir: [options.n1dir, options.n1bindir], options.n2metadir: [options.n2dir, options.n2bindir]}
 
 	for metadir, dir in dirDict.items():
-		print("java -mx2400M -jar %s BinarizeBed -b 200 %s %s %scellMarkFile.txt %s" % (options.chromhmmJar, options.genome, dir[0], metadir, dir[1]+options.datatype))
-		#os.system("java -mx2400M -jar %s BinarizeBed -b 200 %s %s %scellMarkFile.txt %s" % (options.chromhmmJar, options.genome, dir[0], metadir, dir[1]+options.datatype))
+		#print("java -mx2400M -jar %s BinarizeBed -b 200 %s %s %scellMarkFile.txt %s" % (options.chromhmmJar, options.genome, dir[0], metadir, dir[1]+options.datatype))
+		os.system("java -mx2400M -jar %s BinarizeBed -b 200 %s %s %scellMarkFile.txt %s" % (options.chromhmmJar, options.genome, dir[0], metadir, dir[1]+options.datatype))
 
 	merge_binary(n, options)
 
