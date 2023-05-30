@@ -6,10 +6,7 @@ from importlib_metadata import version
 from os import linesep
 from unittest.mock import patch
 
-import chromTools
-import pytest
-
-from cli_test_helpers import ArgvContext, shell
+from cli_test_helpers import shell
 
 
 
@@ -30,8 +27,6 @@ def test_main_module():
 
 
 
-
-
 def test_version():
     """
     Does --version display information as expected?
@@ -42,18 +37,4 @@ def test_version():
     assert result.stdout == 'chromTools 'f"{expected_version}{linesep}"
     assert result.exit_code == 0
 
-'''
-@patch('chromTools')
-def test_usage(mock_dispatch):
-    """
-    Does CLI abort w/o arguments, displaying usage instructions?
-    """
-    with ArgvContext('chromTools'), pytest.raises(SystemExit):
-        chromTools()
 
-    assert not mock_dispatch.called, 'CLI should stop execution'
-
-    result = shell('chromTools')
-
-    assert 'usage:' in result.stderr
-'''

@@ -7,20 +7,18 @@
 
 import gzip as gz
 import multiprocessing as mp
+import pathlib
 import shutil
 import sys
 import tempfile
 import time
 from subprocess import check_output
-import pathlib
 
 import lmfit
 import matplotlib.pyplot as plt
 import mmh3
 import numpy as np
 import pandas as pd
-from MACS3.Commands.callpeak_cmd import load_frag_files_options, load_tag_files_options
-from MACS3.Signal.PeakDetect import PeakDetect
 
 from chromTools.chmm_cmd import make_binary_data_from_bed
 from chromTools.validate import assert_compressed, chmm_validator, macs_validator
@@ -36,7 +34,7 @@ def run(options):
             options (Namespace object): Command line options
     """
     ## Concatenating
-    cat_bed(options.files, options.subdir, options.info)
+    cat_bed(options.files, options.control, options.subdir, options.info)
     total, nfile = wc(
         options.increment, options.subdir, options.info, options.warn, options.paired
     )
@@ -80,7 +78,7 @@ def run(options):
 # --------------------------------------------------------------------------------#
 
 
-def cat_bed(files, subdir, info):
+def cat_bed(files, control, subdir, info):
     """Concatenate compressed or uncompressed files into downsampled.0.bed
 
     Args:
@@ -99,6 +97,17 @@ def cat_bed(files, subdir, info):
             else:
                 with open(f, "rb") as fd:
                     shutil.copyfileobj(fd, wfd)
+    if control != False:
+        with open(pathlib.Path(subdir / "downsampled.ctrl.bed"), "wb") as wfd:
+            for f in control:
+                if assert_compressed(f):
+                    print("File is compressed")
+                    with gz.open(f, "rb") as fd:
+                        shutil.copyfileobj(fd, wfd)
+                else:
+                    with open(f, "rb") as fd:
+                        shutil.copyfileobj(fd, wfd)
+
     info(f"--- {(time.time() - start_time)} seconds ---")
 
 
@@ -308,10 +317,7 @@ def chr_len(genome):
 
 def use_chmm(n, options):
     options = chmm_validator(options)
-    print(options.szchromlengthfile)
     count, total = make_binary_data_from_bed(n, options)
-    print(count)
-    print(total)
     return str(n), count / total
 
 
@@ -383,6 +389,7 @@ def mm(df, outdir):
     plt.xlabel("[S] (reads)")
     plt.ylabel("v (proportion)")
     plt.axhline(y=result.params["Vm"].value, linestyle="-")
+    plt.axvline(x=result.params["Km"].value, linestyle="-")
     plt.title(label=f'Vm: {result.params["Vm"].value}')
     plt.savefig(pathlib.Path(outdir / "mmplot.jpg"))
 

@@ -20,15 +20,15 @@ def make_binary_data_from_bed(n, options):
     """Binarize BED data, both directly and with control.
 
     Args:
-        n (int): file number
-        options (Namespace object):
+            n (int): file number
+            options (Namespace object):
+            control (bool/arr): If not False (default), control contains list of control files.
             szchromfile (str): The name of the file containing chromosome information. It is a two-column file with the first column representing the chromosome and the second column representing the chromosome length.
             szcontroldir (str): The directory containing the bed files with the control data. If set to None, no control data is used.
             szchromlengthfile (str): The name of the two-column file containing chromosome and strand information.
             szmarkdir (str): The directory containing the bed files with the regular mark data.
             szcontroldir (str): The directory containing the bed files with the control data.
             nflankwidthcontrol (int): Specifies the number of bins used in both directions to estimate the background. This attribute is only relevant if control data is being used.
-            szcellmarkfiletable (str): The tab-delimited file where each row contains cell information, mark information, bed file, and optionally the corresponding control bed file.
             nshift (int): The number of bases a read should be shifted in the 5' to 3' direction of a read.
             bcenterinterval (bool): If True, the center of the read is used instead of shifting if the read has already been extended.
             noffsetleft (int): The amount that should be subtracted from the left coordinate to make it 0-based inclusive.
@@ -46,7 +46,11 @@ def make_binary_data_from_bed(n, options):
             bbinarizebam (bool): If True, reads files as BAM files; otherwise, reads files as BED files.
 
     Raises:
-        ValueError: Invalid line found in the chromosome length file if greater than two cols found
+            ValueError: Invalid line found in the chromosome length file if fewer than two cols found
+
+    Returns:
+            count (int): An integer containing number of present marks across included chromosomes
+            total (int): An integer containing number of bins across included chromosomes.
     """
 
     ## set starting options
@@ -61,11 +65,13 @@ def make_binary_data_from_bed(n, options):
     hmfiles = {}
     hmfilescontrol = {}
     hmfiles[f"{szcell}\t{szmark}"] = [f"downsampled.{n}.bed"]
+
     if not options.control:
         hscellnocontrol = hscells
-        hmfilescellcontrol = {}
+        hscellcontrol = set()
     else:
         hscellcontrol = hscells
+        hscellnocontrol = set()
         hmfilescontrol[f"{szcell}\t{szmark}"] = ["downsampled.ctrl.bed"]
         bcontrol = True
 
@@ -98,25 +104,20 @@ def make_binary_data_from_bed(n, options):
     for ni in range(len(chroms)):
         grid[ni] = np.zeros((lengths[ni] // nbinsize, nummarks), dtype=int)
 
-    gridcontrol = None
-    sumgridcontrol = None
-    bpresentcontrol = None
-    bpresentmarkscontrol = None
-
     if bcontrol:
         gridcontrol = np.empty((len(chroms),), dtype=np.ndarray)
         sumgridcontrol = np.empty((len(chroms),), dtype=np.ndarray)
-        bpresentcontrol = [False for _ in range(len(chroms))]
-        bpresentmarkscontrol = [False for _ in range(nummarks)]
+        bpresentcontrol = [False] * len(chroms)
+        bpresentmarkscontrol = [False] * nummarks
 
-    bpresentmarks = [False for _ in range(nummarks)]
+    bpresentmarks = [False] * nummarks
 
     # ----------------------------------------
 
     for szcell in hscells:
-        bpresent = [False for _ in range(len(chroms))]
+        bpresent = [False] * len(chroms)
         # going through each declared cell type
-        hscellcontrol = hmfilescellcontrol.get(szcell)
+        # hscellcontrol = hmfilescellcontrol.get(szcell)
         bmissing = szcell in hscellnocontrol
         if hscellcontrol is None:
             # no control data for this cell type
@@ -180,11 +181,14 @@ def make_binary_data_from_bed(n, options):
 
     nummarks_m1 = nummarks - 1
 
+    count = 0  # number of marks
+    total = 0  # total bins in each chr
     if bcontrolfile:
+        print("This is being run")
         # binarization will be based on control data
 
         # smoothing control data
-        sumgridcontrol = window_sum_grid(
+        gridcontrol, sumgridcontrol = window_sum_grid(
             gridcontrol, sumgridcontrol, options.nflankwidthcontrol
         )
 
@@ -201,13 +205,13 @@ def make_binary_data_from_bed(n, options):
         )
         for nchrom in range(len(chroms)):
             if bpresent[nchrom] and bpresentcontrol[nchrom]:
+                # we have both primary and control data for the mark
                 szfile = pathlib.Path(
                     options.szoutputbinarydir,
                     f"{szcell}_{chroms[nchrom]}_binary.txt",
                 )
                 print("Writing to file", szfile)
                 with open(szfile, "w") as pw:
-                    # we have both primary and control data for the mark
                     pw.write(f"{szcell}\t{chroms[nchrom]}\n")
                     for nmark in range(nummarks_m1):
                         pw.write(f"{marks[nmark]}\t")
@@ -233,8 +237,11 @@ def make_binary_data_from_bed(n, options):
                                 <= grid_nchrom_nbin[nmark]
                             ):
                                 pw.write("1\t")
+                                count += 1
+                                total += 1
                             else:
                                 pw.write("0\t")
+                                total += 1
 
                         if numcontrolmarks == 1:
                             ncontrolval = sumgrid_nchrom_nbin[0]
@@ -248,10 +255,14 @@ def make_binary_data_from_bed(n, options):
                             <= grid_nchrom_nbin[nummarks_m1]
                         ):
                             pw.write("1\n")
+                            count += 1
+                            total += 1
                         else:
                             pw.write("0\n")
+                            total += 1
 
     else:  ## if no control file
+        print("Treating as no control")
         thresholds = determine_mark_thresholds_from_binned_data_array(
             grid,
             bpresent,
@@ -260,8 +271,7 @@ def make_binary_data_from_bed(n, options):
             options.bcontainsthresh,
             options.dcountthresh,
         )
-        count = 0
-        total = 0
+
         for nchrom in range(len(chroms)):
             if bpresent[nchrom]:
                 szfile = os.path.join(
@@ -580,13 +590,12 @@ def determine_mark_thresholds_from_binned_data_array_against_control(
     for nmark in range(len(sumtags)):
         # computing threshold for each mark
         thresholds[nmark] = [0] * (maxcontrol[nmark] + 1)
-        thresholds_nmark = thresholds[nmark]
 
         # determine the relative enrichment for real reads versus the local expected
         davgratio = sumtags[nmark] / sumtagscontrol[nmark]
 
         # sets a background of 0 threshold to 1
-        thresholds_nmark[0] = max(int(dcountthresh), 1)
+        thresholds[nmark][0] = max(int(dcountthresh), 1)
 
         # going through each background value
         for nbackground in range(1, maxcontrol[nmark] + 1):
@@ -614,7 +623,7 @@ def determine_mark_thresholds_from_binned_data_array_against_control(
                     # decreasing to include the dpoissonthreshold probability
                     nthresh -= 1
 
-                thresholds_nmark[nbackground] = max(
+                thresholds[nmark][nbackground] = max(
                     int(dfoldthresh * dlambda), nthresh, int(dcountthresh)
                 )
     return thresholds
@@ -646,22 +655,17 @@ def window_sum_grid(gridcontrol, sumgridcontrol, nflankwidthcontrol):
           For example, if nflankwidthcontrol is set to 5, it includes 5 positions to the left and 5 positions to the
           right of the current bin (including the current bin itself).
     """
-
     for nchrom in range(len(gridcontrol)):
-        gridcontrol_nchrom = gridcontrol[nchrom]
-        sumgridcontrol_nchrom = sumgridcontrol[nchrom]
-
-        for nbin in range(len(sumgridcontrol_nchrom)):
-            sumgridcontrol_nchrom_nbin = sumgridcontrol_nchrom[nbin]
+        for nbin in range(len(sumgridcontrol[nchrom])):
             nstart = max(0, nbin - nflankwidthcontrol)
-            nend = min(nbin + nflankwidthcontrol, len(gridcontrol_nchrom) - 1)
+            nend = min(nbin + nflankwidthcontrol, len(gridcontrol[nchrom]) - 1)
 
-            for nmark in range(len(sumgridcontrol_nchrom_nbin)):
+            for nmark in range(len(sumgridcontrol[nchrom][nbin])):
                 nsum = 0
                 for nrow in range(nstart, nend + 1):
-                    nval = gridcontrol_nchrom[nrow][nmark]
+                    nval = gridcontrol[nchrom][nrow][nmark]
                     if nval > 0:
                         nsum += nval
 
-                sumgridcontrol_nchrom[nbin][nmark] = nsum
-    return sumgridcontrol
+                sumgridcontrol[nchrom][nbin][nmark] = nsum
+    return gridcontrol, sumgridcontrol

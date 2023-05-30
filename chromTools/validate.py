@@ -11,8 +11,6 @@ import random
 import sys
 from pathlib import Path
 
-from MACS3.IO.Parser import BEDParser, BEDPEParser
-
 from chromTools.constants import GENOME as gnm
 
 
@@ -76,6 +74,12 @@ def args_validator(options):
     for f in options.files:
         if not Path(f).exists():
             raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), f)
+
+    ## files (path)
+    if options.control != False:
+        for f in options.control:
+            if not Path(f).exists():
+                raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), f)
 
     ## outdir
     options.outdir = Path(options.outdir)
