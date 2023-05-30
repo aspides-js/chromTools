@@ -68,6 +68,7 @@ def make_binary_data_from_bed(n, options):
 
     if not options.control:
         hscellnocontrol = hscells
+        hscellcontrol = set()
     else:
         hscellcontrol = hscells
         hscellnocontrol = set()
@@ -187,7 +188,7 @@ def make_binary_data_from_bed(n, options):
         # binarization will be based on control data
 
         # smoothing control data
-        sumgridcontrol = window_sum_grid(
+        gridcontrol, sumgridcontrol = window_sum_grid(
             gridcontrol, sumgridcontrol, options.nflankwidthcontrol
         )
 
@@ -589,13 +590,12 @@ def determine_mark_thresholds_from_binned_data_array_against_control(
     for nmark in range(len(sumtags)):
         # computing threshold for each mark
         thresholds[nmark] = [0] * (maxcontrol[nmark] + 1)
-        thresholds_nmark = thresholds[nmark]
 
         # determine the relative enrichment for real reads versus the local expected
         davgratio = sumtags[nmark] / sumtagscontrol[nmark]
 
         # sets a background of 0 threshold to 1
-        thresholds_nmark[0] = max(int(dcountthresh), 1)
+        thresholds[nmark][0] = max(int(dcountthresh), 1)
 
         # going through each background value
         for nbackground in range(1, maxcontrol[nmark] + 1):
@@ -623,7 +623,7 @@ def determine_mark_thresholds_from_binned_data_array_against_control(
                     # decreasing to include the dpoissonthreshold probability
                     nthresh -= 1
 
-                thresholds_nmark[nbackground] = max(
+                thresholds[nmark][nbackground] = max(
                     int(dfoldthresh * dlambda), nthresh, int(dcountthresh)
                 )
     return thresholds
@@ -655,22 +655,17 @@ def window_sum_grid(gridcontrol, sumgridcontrol, nflankwidthcontrol):
           For example, if nflankwidthcontrol is set to 5, it includes 5 positions to the left and 5 positions to the
           right of the current bin (including the current bin itself).
     """
-
     for nchrom in range(len(gridcontrol)):
-        gridcontrol_nchrom = gridcontrol[nchrom]
-        sumgridcontrol_nchrom = sumgridcontrol[nchrom]
-
-        for nbin in range(len(sumgridcontrol_nchrom)):
-            sumgridcontrol_nchrom_nbin = sumgridcontrol_nchrom[nbin]
+        for nbin in range(len(sumgridcontrol[nchrom])):
             nstart = max(0, nbin - nflankwidthcontrol)
-            nend = min(nbin + nflankwidthcontrol, len(gridcontrol_nchrom) - 1)
+            nend = min(nbin + nflankwidthcontrol, len(gridcontrol[nchrom]) - 1)
 
-            for nmark in range(len(sumgridcontrol_nchrom_nbin)):
+            for nmark in range(len(sumgridcontrol[nchrom][nbin])):
                 nsum = 0
                 for nrow in range(nstart, nend + 1):
-                    nval = gridcontrol_nchrom[nrow][nmark]
+                    nval = gridcontrol[nchrom][nrow][nmark]
                     if nval > 0:
                         nsum += nval
 
-                sumgridcontrol_nchrom[nbin][nmark] = nsum
-    return sumgridcontrol
+                sumgridcontrol[nchrom][nbin][nmark] = nsum
+    return gridcontrol, sumgridcontrol
