@@ -12,7 +12,11 @@ jobs:
       uses: actions/setup-python@v4
       with:
         # Semantic version range syntax or exact version of a Python version
-        python-version: "3.8"
+        python-version: "3.8"        
+    - name: Install lmfit
+      run: python3 -m pip install --user lmfit
+    - name: Install numpy
+      run: python3 -m pip install --user numpy
     - uses: actions/checkout@v3
     - name: Build HTML
       uses: ammaraskar/sphinx-action@master
