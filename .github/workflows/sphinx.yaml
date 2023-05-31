@@ -8,11 +8,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
-    - name: Install lmfit
-      run: pip install --user lmfit
-    - name: Install numpy
-      run: pip install --user numpy
-    - uses: actions/checkout@v3
     - name: Build HTML
       uses: ammaraskar/sphinx-action@master
     - name: Upload artifacts
@@ -26,3 +21,9 @@ jobs:
       with:
         github_token: ${{ secrets.GITHUB_TOKEN }}
         publish_dir: docs/build/html
+
+python:
+  # Install our python package before building the docs
+  install:
+    - method: pip
+      path: .
