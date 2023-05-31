@@ -3,10 +3,10 @@
   <head><meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width,initial-scale=1"/>
     <meta name="color-scheme" content="light dark"><meta name="viewport" content="width=device-width, initial-scale=1" />
-<link rel="index" title="Index" href="genindex.html" /><link rel="search" title="Search" href="search.html" /><link rel="next" title="Installation" href="install.html" /><link rel="prev" title="Why chromTools?" href="why.html" />
+<link rel="index" title="Index" href="genindex.html" /><link rel="search" title="Search" href="search.html" /><link rel="next" title="Installation" href="install.html" /><link rel="prev" title="Welcome chromTools’ documentation" href="index.html" />
 
     <!-- Generated with Sphinx 7.0.1 and Furo 2023.05.20 -->
-        <title>What does chromTools do? - chromTools 0.1 documentation</title>
+        <title>Overview - chromTools 0.1 documentation</title>
       <link rel="stylesheet" type="text/css" href="_static/pygments.css" />
     <link rel="stylesheet" type="text/css" href="_static/styles/furo.css?digest=e6660623a769aa55fea372102b9bf3151b292993" />
     <link rel="stylesheet" type="text/css" href="_static/styles/furo-extensions.css?digest=30d1aed668e5c3a91c3e3bf6a60b675221979f0e" />
@@ -155,10 +155,9 @@
 </form>
 <div id="searchbox"></div><div class="sidebar-scroll"><div class="sidebar-tree">
   <ul class="current">
-<li class="toctree-l1"><a class="reference internal" href="why.html">Why chromTools?</a></li>
-<li class="toctree-l1 current current-page"><a class="current reference internal" href="#">What does chromTools do?</a></li>
+<li class="toctree-l1 current current-page"><a class="current reference internal" href="#">Overview</a></li>
 <li class="toctree-l1"><a class="reference internal" href="install.html">Installation</a></li>
-<li class="toctree-l1"><a class="reference internal" href="usage.html">Usage</a></li>
+<li class="toctree-l1"><a class="reference internal" href="usage.html">General Usage</a></li>
 <li class="toctree-l1"><a class="reference internal" href="functions.html">Internal Functions</a></li>
 </ul>
 
@@ -194,10 +193,17 @@
           </label>
         </div>
         <article role="main">
-          <section id="what-does-chromtools-do">
-<h1>What does chromTools do?<a class="headerlink" href="#what-does-chromtools-do" title="Permalink to this heading">#</a></h1>
+          <section id="overview">
+<h1>Overview<a class="headerlink" href="#overview" title="Permalink to this heading">#</a></h1>
+<section id="why-chromtools">
+<h2>Why chromTools?<a class="headerlink" href="#why-chromtools" title="Permalink to this heading">#</a></h2>
+<p>Using multiple different epigenetic data types as input, chromatin state annotation algorithms segment and annotate the genome based on the combination of epigenetic marks found at each genomic position, assigning a chromatin state label to each segment. However, there are currently no generally agreed-upon statistics to determine the quality of a particular annotation.</p>
+<p>While tools have been developed to evaluate the characteristics of an annotation, the accuracy of the derived chromatin state labels is also reliant upon a robust input dataset that represents a complete set of marks across the genome. <strong>chromTools complete</strong> aims to provide the user with the ability to assesses the extent to which their epigenetic dataset captures the complete set of marks, using a subsampling approach to estimate the number of reads required to approach the complete sampling of the mark</p>
+</section>
+<section id="what-does-chromtools-do">
+<h2>What does chromTools do?<a class="headerlink" href="#what-does-chromtools-do" title="Permalink to this heading">#</a></h2>
 <section id="chromtools-complete">
-<h2>chromTools complete<a class="headerlink" href="#chromtools-complete" title="Permalink to this heading">#</a></h2>
+<h3>chromTools complete<a class="headerlink" href="#chromtools-complete" title="Permalink to this heading">#</a></h3>
 <p><strong>1. Concatenates</strong>
 The tool takes as input aligned BED files (not peak called files) from ChIP-seq, ATAC-seq or WGBS experiments. Control data can also be optionally included. It first concatenates the input files into a file containing all lines of the dataset <code class="code docutils literal notranslate"><span class="pre">downsampled.0.bed</span></code>. If control files are specified these are concatenated to create <code class="code docutils literal notranslate"><span class="pre">downsampled.ctrl.bed</span></code>.</p>
 <a class="reference internal image-reference" href="_images/concat.jpg"><img alt="Alternative text" src="_images/concat.jpg" style="width: 100%;" /></a>
@@ -209,6 +215,7 @@ Subsequently, the tool implements a version of the ChromHMM binarisation step. B
 <a class="reference internal image-reference" href="_images/binarise.jpg"><img alt="Alternative text" src="_images/binarise.jpg" style="width: 100%;" /></a>
 <p><strong>4. Calculates metrics</strong>
 Finally, the proportion of marks compared to total bins is calculated per sub-sampled file and the Michaelis-Menten kinetics of the resulting data is also calculated. The output includes the plots for the latter two calculations, a text file of the proportion of marks and a text file indicating the <span class="math notranslate nohighlight">\(Vm\)</span>, or saturation point of the dataset.</p>
+</section>
 </section>
 </section>
 
@@ -226,14 +233,14 @@ Finally, the proportion of marks compared to total bins is calculated per sub-sa
               </div>
               <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
             </a>
-          <a class="prev-page" href="why.html">
+          <a class="prev-page" href="index.html">
               <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
               <div class="page-info">
                 <div class="context">
                   <span>Previous</span>
                 </div>
                 
-                <div class="title">Why chromTools?</div>
+                <div class="title">Home</div>
                 
               </div>
             </a>
@@ -267,8 +274,12 @@ Finally, the proportion of marks compared to total bins is calculated per sub-sa
         <div class="toc-tree-container">
           <div class="toc-tree">
             <ul>
-<li><a class="reference internal" href="#">What does chromTools do?</a><ul>
+<li><a class="reference internal" href="#">Overview</a><ul>
+<li><a class="reference internal" href="#why-chromtools">Why chromTools?</a></li>
+<li><a class="reference internal" href="#what-does-chromtools-do">What does chromTools do?</a><ul>
 <li><a class="reference internal" href="#chromtools-complete">chromTools complete</a></li>
+</ul>
+</li>
 </ul>
 </li>
 </ul>
