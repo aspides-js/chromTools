@@ -23,8 +23,7 @@ Contents
 
 .. toctree::
 
-   why
-   what
+   overview
    install
    usage
    functions
