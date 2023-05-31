@@ -498,12 +498,7 @@ def determine_mark_thresholds_from_binned_data_array(
         if bcontainsthresh:
             nthresh -= 1
 
-        thresholds[nj] = max(
-            int(math.ceil(dfoldthresh * dlambda)),
-            nthresh,
-            1,
-            int(math.ceil(dcountthresh)),
-        )
+        thresholds[nj] = max(int(dfoldthresh * dlambda), nthresh, int(dcountthresh))
 
     return thresholds
 
@@ -558,7 +553,7 @@ def determine_mark_thresholds_from_binned_data_array_against_control(
     sumtagscontrol = [0] * nummarks
 
     # stores the thresholds for each mark and background value
-    thresholds = [[] for _ in range(nummarks)]
+    thresholds = [0] * nummarks
 
     # stores the maximum control value found for each mark
     maxcontrol = [0] * nummarks
@@ -568,23 +563,18 @@ def determine_mark_thresholds_from_binned_data_array_against_control(
 
     for nchrom in range(len(grid)):
         if bpresent[nchrom] and bpresentcontrol[nchrom]:
-            grid_nchrom = grid[nchrom]
-            gridcontrol_nchrom = gridcontrol[nchrom]
-
-            for nbin in range(len(grid_nchrom)):
-                grid_nchrom_nbin = grid_nchrom[nbin]
-                gridcontrol_nchrom_nbin = gridcontrol_nchrom[nbin]
+            for nbin in range(len(grid[nchrom])):
                 for nmark in range(nummarks):
                     # int nval = grid_nchrom_nbin[nmark];
                     if numcontrolmarks == 1:
-                        ncontrolval = gridcontrol_nchrom_nbin[0]
+                        ncontrolval = gridcontrol[nchrom][nbin][0]
                     else:
-                        ncontrolval = gridcontrol_nchrom_nbin[nmark]
+                        ncontrolval = gridcontrol[nchrom][nbin][nmark]
 
                     if ncontrolval > maxcontrol[nmark]:
                         maxcontrol[nmark] = ncontrolval
                     hscontrol[nmark].add(ncontrolval)
-                    sumtags[nmark] += grid_nchrom_nbin[nmark]
+                    sumtags[nmark] += grid[nchrom][nbin][nmark]
                     sumtagscontrol[nmark] += ncontrolval
 
     for nmark in range(len(sumtags)):
