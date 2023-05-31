@@ -7,6 +7,7 @@ Basic usage
 
 **chromTools complete** is a single command line tool which takes as input a set of BED files, and outputs a metric and plot indicating how complete the dataset is.
 
+
 .. code-block:: console
 
    $ chromTools complete \
@@ -46,3 +47,11 @@ Optional parameters
 :code:`--force-overwrite`: If specified, files and directories in outdir will be overwritten. Default: FALSE.
 
 
+Input
+~~~~~
+
+For all data types, **chromTools complete** takes as input a set of aligned BED files.
+
+A typical pipeline prior to using **chromTools complete** might be:
+
+raw data > qc > alignment > bamToBed

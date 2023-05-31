@@ -9,6 +9,7 @@ Installation
 For now, **chromTools complete** can be installed via :code:`git clone` and then by running the following code in your terminal: 
 
 .. code-block:: console
+    
     $ cd chromTools
     $ pip install -e ./[dev]
 
