@@ -197,6 +197,44 @@
 <h1>Internal Functions<a class="headerlink" href="#internal-functions" title="Permalink to this heading">#</a></h1>
 <section id="chromtools-complete">
 <h2>chromTools complete<a class="headerlink" href="#chromtools-complete" title="Permalink to this heading">#</a></h2>
+<dl class="py function">
+<dt class="sig sig-object py" id="chromTools.chmm_cmd.make_binary_data_from_bed">
+<span class="sig-prename descclassname"><span class="pre">chromTools.chmm_cmd.</span></span><span class="sig-name descname"><span class="pre">make_binary_data_from_bed</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">n</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">options</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/chromTools/chmm_cmd.html#make_binary_data_from_bed"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#chromTools.chmm_cmd.make_binary_data_from_bed" title="Permalink to this definition">#</a></dt>
+<dd><p>Binarize BED data, both directly and with control.</p>
+<dl class="simple">
+<dt>Args:</dt><dd><p>n (int): file number
+options (Namespace object):
+control (bool/arr): If not False (default), control contains list of control files.
+szchromfile (str): The name of the file containing chromosome information. It is a two-column file with the first column representing the chromosome and the second column representing the chromosome length.
+szcontroldir (str): The directory containing the bed files with the control data. If set to None, no control data is used.
+szchromlengthfile (str): The name of the two-column file containing chromosome and strand information.
+szmarkdir (str): The directory containing the bed files with the regular mark data.
+szcontroldir (str): The directory containing the bed files with the control data.
+nflankwidthcontrol (int): Specifies the number of bins used in both directions to estimate the background. This attribute is only relevant if control data is being used.
+nshift (int): The number of bases a read should be shifted in the 5’ to 3’ direction of a read.
+bcenterinterval (bool): If True, the center of the read is used instead of shifting if the read has already been extended.
+noffsetleft (int): The amount that should be subtracted from the left coordinate to make it 0-based inclusive.
+noffsetright (int): The amount that should be subtracted from the right coordinate to make it 0-based inclusive.
+szoutputsignaldir (str): If not None, the intermediate signal data will be printed to this directory.
+szoutputbinarydir (str): The directory where the binarized data will be printed.
+szoutputcontroldir (str): If not None, the intermediate control signal data will be printed to this directory.
+dpoissonthresh (float): The tail probability threshold on the Poisson distribution.
+dfoldthresh (float): The fold threshold required for a present call.
+bcontainsthresh (bool): If True, the Poisson cutoff should be the highest value that still contains the dpoissonthresh probability. If False, it requires strictly greater.
+npseudocountcontrol (int): An integer pseudocount that is uniformly added to every interval to smooth the control data.
+nbinsize (int): The number of base pairs in a bin.
+szcolfields (str): A comma-delimited string indicating the 0-based columns of the chromosome, start, end, and optionally strand position. If set to None, the default values are used (0, 1, 2) for chromosome, start, and end, with the strand as the sixth column or the last column if fewer columns are present.
+dcountthresh (float): The absolute signal threshold for a present call.
+bbinarizebam (bool): If True, reads files as BAM files; otherwise, reads files as BED files.</p>
+</dd>
+<dt>Raises:</dt><dd><p>ValueError: Invalid line found in the chromosome length file if fewer than two cols found</p>
+</dd>
+<dt>Returns:</dt><dd><p>count (int): An integer containing number of present marks across included chromosomes
+total (int): An integer containing number of bins across included chromosomes.</p>
+</dd>
+</dl>
+</dd></dl>
+
 </section>
 </section>
 
@@ -248,7 +286,10 @@
           <div class="toc-tree">
             <ul>
 <li><a class="reference internal" href="#">Internal Functions</a><ul>
-<li><a class="reference internal" href="#chromtools-complete">chromTools complete</a></li>
+<li><a class="reference internal" href="#chromtools-complete">chromTools complete</a><ul>
+<li><a class="reference internal" href="#chromTools.chmm_cmd.make_binary_data_from_bed"><code class="docutils literal notranslate"><span class="pre">make_binary_data_from_bed()</span></code></a></li>
+</ul>
+</li>
 </ul>
 </li>
 </ul>
