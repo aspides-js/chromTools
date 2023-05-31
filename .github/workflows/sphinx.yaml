@@ -5,6 +5,8 @@ permissions:
     contents: write
 jobs:
   build:
+    needs:
+        python: "3.7"
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
