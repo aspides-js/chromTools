@@ -8,8 +8,8 @@ Input
 
 For all data types, **chromTools complete** takes as input a set of aligned `browser extensible data (BED) <https://genome.ucsc.edu/FAQ/FAQformat.html#format1>`_ files. The BED format is a concise and flexible way to represent genomic features and annotations. The format supports up to 12 columns, but for **chromTools complete** only the first **4** are required.
 
-BED: required columns
-~~~~~~~~~~~~~~~~~~~~~
+Required columns
+~~~~~~~~~~~~~~~~
 
 1. **chrom** - The name of the chromosome.
    This column is required.
@@ -23,8 +23,8 @@ BED: required columns
 4. **name** - Defines the name of the BED feature, in this case the readname.
    This column is required.
 
-Example: pipeline and input file
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Example pipeline and input file
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 A typical pipeline prior to using **chromTools complete** might be:
 
@@ -46,7 +46,7 @@ Output
 
 The outputs from the various steps of **chromTools complete** are created in the following directory structure, within the :code:`--outdir` parameter.
 
-.. code-block:: ruby
+.. code-block:: none
 
    <outdir>
    ├── 1_subsample/
@@ -67,9 +67,6 @@ Information on how to interpret the output plots, :code:`completeplot.jpg` and :
 
 Basic usage
 -----------
-
-**chromTools complete** is a single command line tool which takes as input a set of aligned BED files, and outputs a metric and plot indicating how complete the dataset is.
-
 
 .. code-block::
 
@@ -105,7 +102,7 @@ Optional parameters
 
 :code:`--seed <int>`: The seed used for initiating randomization operations. Default: randomly generated.
 
-:code:`--paired`: If specified data will be treated as paired end. Default: FALSE.
+:code:`--paired`: If specified, data will be treated as paired end. Default: FALSE.
 
 :code:`--force-overwrite`: If specified, files and directories in outdir will be overwritten. Default: FALSE.
 
@@ -138,3 +135,19 @@ This will create the directory :code:`tmp/` and subdirectories within this and p
 
 Interpretation
 --------------
+
+In the output two plots are generated, ``mmplot.jpg`` and ``completeplot.jpg``. 
+
+``completeplot`` shows the proportion of marks found, plotted against the read number.
+
+In the plot below, you can see an example of a complete dataset. Here, the proportion of marks has reached a plateau where even with the addition of more reads, there is not an increase in information. Therefore, this indicates that the dataset represents the totality of possible marks. 
+
+``mmplot`` gives an indication of the saturation point of the dataset, i.e. the proportion of marks present. The more complete a dataset is, the more accurate this will be. It also gives 
+
+.. image:: _static/img/goodmmplt.jpg
+  :width: 50%
+  :alt: Bad MM plot
+
+.. image:: _static/img/badmmplt.jpg
+  :width: 50%
+  :alt: Bad MM plot

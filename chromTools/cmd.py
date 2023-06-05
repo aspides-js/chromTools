@@ -79,12 +79,17 @@ def run(options):
 
 
 def cat_bed(files, control, subdir, info):
-    """Concatenate compressed or uncompressed files into downsampled.0.bed
+    """
+    Concatenate compressed or uncompressed files into downsampled.0.bed.
 
-    Args:
-            files (str): Files to concatenate
-            subdir (str): Path to subsample directory
-            info (_type_): Logging
+    :param files: Files to concatenate.
+    :type files: str
+    :param control: Control files to concatenate.
+    :type control: str or None
+    :param subdir: Path to the subsample directory.
+    :type subdir: str
+    :param info: Logging function for informational messages.
+
     """
     info("Concatenating files...")
     start_time = time.time()
@@ -114,16 +119,18 @@ def cat_bed(files, control, subdir, info):
 def wc(increment, subdir, info, warn, paired):
     """Count total read number
 
-    Args:
-            increment (int): Amount to increase each subsampled file by
-            subdir (str): Path to subsample directory
-            info (_type_): Logging
-            warn (_type_): Logging
-            paired (bool): Paired end reads
+    :param increment: The amount to increase each subsampled file by.
+    :type increment: int
+    :param subdir: Path to the subsample directory.
+    :type subdir: str
+    :param info: Logging function for informational messages.
+    :param warn: Logging function for warning messages.
+    :param paired: Indicates if the reads are paired end.
+    :type paired: bool
 
-    Returns:
-            total (int): Total number of reads/read pairs in downsampled.0.bed
-            nfile (int): Number of files that will be generated
+    :return: A tuple containing the total number of reads and the number of files that will be generated.
+    :rtype: tuple[int, int]
+
     """
     start_time = time.time()
     info("Calculating total read number...")
@@ -192,14 +199,16 @@ def downsample(n, options, total):
     whose value is below the limit are written to outfile, records whose hash value is above
     the limit are discarded.
 
-    Args:
-            n (int): Numerical descriptor of file
-            options (Namespace object): Command line arguments
-            total (int): Total number of reads/read pairs in downsampled.0.bed
+    :param n: Numerical descriptor of file
+    :type n: int
+    :param total: Total number of reads/read pairs in downsampled.0.bed
+    :type total: int
+    :param options: Command line arguments
+    :type options: Namespace object
 
-    Returns:
-            n (int): Numerical descriptor of file
-            reads: Number of reads in file
+    :return: A tuple containing the numerical descriptor of file and the number of reads.
+    :rtype: tuple[str, float]
+
     """
     proportion = (options.increment * n) / total
     outfile = pathlib.Path(options.subdir / f"downsampled.{n}.bed")
@@ -389,7 +398,9 @@ def mm(df, outdir):
     plt.xlabel("[S] (reads)")
     plt.ylabel("v (proportion)")
     plt.axhline(y=result.params["Vm"].value, linestyle="-")
-    plt.axvline(x=result.params["Km"].value, linestyle="-")
+    if result.params["Km"].value > max(data[0]):
+        plt.axvline(x=result.params["Km"].value, linestyle="-")
+
     plt.title(label=f'Vm: {result.params["Vm"].value}')
     plt.savefig(pathlib.Path(outdir / "mmplot.jpg"))
 
