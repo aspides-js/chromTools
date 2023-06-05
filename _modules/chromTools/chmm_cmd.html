@@ -213,38 +213,62 @@
 <div class="viewcode-block" id="make_binary_data_from_bed"><a class="viewcode-back" href="../../functions.html#chromTools.chmm_cmd.make_binary_data_from_bed">[docs]</a><span class="k">def</span> <span class="nf">make_binary_data_from_bed</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">options</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Binarize BED data, both directly and with control.</span>
 
-<span class="sd">    Args:</span>
-<span class="sd">            n (int): file number</span>
-<span class="sd">            options (Namespace object):</span>
-<span class="sd">            control (bool/arr): If not False (default), control contains list of control files.</span>
-<span class="sd">            szchromfile (str): The name of the file containing chromosome information. It is a two-column file with the first column representing the chromosome and the second column representing the chromosome length.</span>
-<span class="sd">            szcontroldir (str): The directory containing the bed files with the control data. If set to None, no control data is used.</span>
-<span class="sd">            szchromlengthfile (str): The name of the two-column file containing chromosome and strand information.</span>
-<span class="sd">            szmarkdir (str): The directory containing the bed files with the regular mark data.</span>
-<span class="sd">            szcontroldir (str): The directory containing the bed files with the control data.</span>
-<span class="sd">            nflankwidthcontrol (int): Specifies the number of bins used in both directions to estimate the background. This attribute is only relevant if control data is being used.</span>
-<span class="sd">            nshift (int): The number of bases a read should be shifted in the 5&#39; to 3&#39; direction of a read.</span>
-<span class="sd">            bcenterinterval (bool): If True, the center of the read is used instead of shifting if the read has already been extended.</span>
-<span class="sd">            noffsetleft (int): The amount that should be subtracted from the left coordinate to make it 0-based inclusive.</span>
-<span class="sd">            noffsetright (int): The amount that should be subtracted from the right coordinate to make it 0-based inclusive.</span>
-<span class="sd">            szoutputsignaldir (str): If not None, the intermediate signal data will be printed to this directory.</span>
-<span class="sd">            szoutputbinarydir (str): The directory where the binarized data will be printed.</span>
-<span class="sd">            szoutputcontroldir (str): If not None, the intermediate control signal data will be printed to this directory.</span>
-<span class="sd">            dpoissonthresh (float): The tail probability threshold on the Poisson distribution.</span>
-<span class="sd">            dfoldthresh (float): The fold threshold required for a present call.</span>
-<span class="sd">            bcontainsthresh (bool): If True, the Poisson cutoff should be the highest value that still contains the dpoissonthresh probability. If False, it requires strictly greater.</span>
-<span class="sd">            npseudocountcontrol (int): An integer pseudocount that is uniformly added to every interval to smooth the control data.</span>
-<span class="sd">            nbinsize (int): The number of base pairs in a bin.</span>
-<span class="sd">            szcolfields (str): A comma-delimited string indicating the 0-based columns of the chromosome, start, end, and optionally strand position. If set to None, the default values are used (0, 1, 2) for chromosome, start, and end, with the strand as the sixth column or the last column if fewer columns are present.</span>
-<span class="sd">            dcountthresh (float): The absolute signal threshold for a present call.</span>
-<span class="sd">            bbinarizebam (bool): If True, reads files as BAM files; otherwise, reads files as BED files.</span>
+<span class="sd">    :param n: File number.</span>
+<span class="sd">    :type n: int</span>
+<span class="sd">    :param options: Namespace object.</span>
+<span class="sd">    :type options: object</span>
+<span class="sd">    :param control: If not False (default), control contains a list of control files.</span>
+<span class="sd">    :type control: bool or list</span>
+<span class="sd">    :param szchromfile: The name of the file containing chromosome information. It is a two-column file with the first column representing the chromosome and the second column representing the chromosome length.</span>
+<span class="sd">    :type szchromfile: str</span>
+<span class="sd">    :param szcontroldir: The directory containing the bed files with the control data. If set to None, no control data is used.</span>
+<span class="sd">    :type szcontroldir: str</span>
+<span class="sd">    :param szchromlengthfile: The name of the two-column file containing chromosome and strand information.</span>
+<span class="sd">    :type szchromlengthfile: str</span>
+<span class="sd">    :param szmarkdir: The directory containing the bed files with the regular mark data.</span>
+<span class="sd">    :type szmarkdir: str</span>
+<span class="sd">    :param nflankwidthcontrol: Specifies the number of bins used in both directions to estimate the background. This attribute is only relevant if control data is being used.</span>
+<span class="sd">    :type nflankwidthcontrol: int</span>
+<span class="sd">    :param nshift: The number of bases a read should be shifted in the 5&#39; to 3&#39; direction of a read.</span>
+<span class="sd">    :type nshift: int</span>
+<span class="sd">    :param bcenterinterval: If True, the center of the read is used instead of shifting if the read has already been extended.</span>
+<span class="sd">    :type bcenterinterval: bool</span>
+<span class="sd">    :param noffsetleft: The amount that should be subtracted from the left coordinate to make it 0-based inclusive.</span>
+<span class="sd">    :type noffsetleft: int</span>
+<span class="sd">    :param noffsetright: The amount that should be subtracted from the right coordinate to make it 0-based inclusive.</span>
+<span class="sd">    :type noffsetright: int</span>
+<span class="sd">    :param szoutputsignaldir: If not None, the intermediate signal data will be printed to this directory.</span>
+<span class="sd">    :type szoutputsignaldir: str</span>
+<span class="sd">    :param szoutputbinarydir: The directory where the binarized data will be printed.</span>
+<span class="sd">    :type szoutputbinarydir: str</span>
+<span class="sd">    :param szoutputcontroldir: If not None, the intermediate control signal data will be printed to this directory.</span>
+<span class="sd">    :type szoutputcontroldir: str</span>
+<span class="sd">    :param dpoissonthresh: The tail probability threshold on the Poisson distribution.</span>
+<span class="sd">    :type dpoissonthresh: float</span>
+<span class="sd">    :param dfoldthresh: The fold threshold required for a present call.</span>
+<span class="sd">    :type dfoldthresh: float</span>
+<span class="sd">    :param bcontainsthresh: If True, the Poisson cutoff should be the highest value that still contains the dpoissonthresh probability. If False, it requires strictly greater.</span>
+<span class="sd">    :type bcontainsthresh: bool</span>
+<span class="sd">    :param npseudocountcontrol: An integer pseudocount that is uniformly added to every interval to smooth the control data.</span>
+<span class="sd">    :type npseudocountcontrol: int</span>
+<span class="sd">    :param nbinsize: The number of base pairs in a bin</span>
+<span class="sd">    :type nbinsize: int</span>
+<span class="sd">    :param szcolfields: A comma-delimited string indicating the 0-based columns of the chromosome, start, end,</span>
+<span class="sd">                        and optionally strand position. If set to None, the default values are used (0, 1, 2) for</span>
+<span class="sd">                        chromosome, start, and end, with the strand as the sixth column or the last column if fewer</span>
+<span class="sd">                        columns are present.</span>
+<span class="sd">    :type szcolfields: str</span>
+<span class="sd">    :param dcountthresh: The absolute signal threshold for a present call.</span>
+<span class="sd">    :type dcountthresh: float</span>
+<span class="sd">    :param bbinarizebam: If True, reads files as BAM files; otherwise, reads files as BED files.</span>
+<span class="sd">    :type bbinarizebam: bool</span>
 
-<span class="sd">    Raises:</span>
-<span class="sd">            ValueError: Invalid line found in the chromosome length file if fewer than two cols found</span>
+<span class="sd">    :raises ValueError: Invalid line found in the chromosome length file if fewer than two cols found</span>
 
-<span class="sd">    Returns:</span>
-<span class="sd">            count (int): An integer containing number of present marks across included chromosomes</span>
-<span class="sd">            total (int): An integer containing number of bins across included chromosomes.</span>
+<span class="sd">    :return: A tuple containing the count of present marks across included chromosomes and the total number of bins</span>
+<span class="sd">             across included chromosomes.</span>
+<span class="sd">    :rtype: tuple[int, int]</span>
+
 <span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="c1">## set starting options</span>
@@ -503,7 +527,7 @@
 <span class="c1"># --------------------------------------</span>
 
 
-<span class="k">def</span> <span class="nf">load_grid</span><span class="p">(</span>
+<div class="viewcode-block" id="load_grid"><a class="viewcode-back" href="../../functions.html#chromTools.chmm_cmd.load_grid">[docs]</a><span class="k">def</span> <span class="nf">load_grid</span><span class="p">(</span>
     <span class="n">grid</span><span class="p">,</span>
     <span class="n">bpresent</span><span class="p">,</span>
     <span class="n">bpresentmarks</span><span class="p">,</span>
@@ -524,25 +548,36 @@
 <span class="sd">    This function populates the provided grid with data obtained from mark files. It iterates through mark files for each</span>
 <span class="sd">    cell type and mark, calculates the bin index for each data point, and updates the corresponding grid cell.</span>
 
+<span class="sd">    :param grid: The array to load the read counts into.</span>
+<span class="sd">    :type grid: numpy.ndarray</span>
+<span class="sd">    :param bpresent: Indicates if there is a read for a chromosome with an index in hmchrom.</span>
+<span class="sd">    :type bpresent: list</span>
+<span class="sd">    :param bpresentmark: Indicates if the mark is present in the cell type.</span>
+<span class="sd">    :type bpresentmark: list</span>
+<span class="sd">    :param marks: Contains the names of the header marks.</span>
+<span class="sd">    :type marks: list</span>
+<span class="sd">    :param nshift: The number of bases a read should be shifted in the 5&#39; to 3&#39; direction of a read.</span>
+<span class="sd">    :type nshift: int</span>
+<span class="sd">    :param nbinsize: The number of base pairs in a bin.</span>
+<span class="sd">    :type nbinsize: int</span>
+<span class="sd">    :param noffsetleft: The amount that should be subtracted from the left coordinate so it is 0-based inclusive.</span>
+<span class="sd">    :type noffsetleft: int</span>
+<span class="sd">    :param noffsetright: The amount that should be subtracted from the right coordinate so it is 0-based inclusive.</span>
+<span class="sd">    :type noffsetright: int</span>
+<span class="sd">    :param hmfiles: Maps cell and mark to an actual read file.</span>
+<span class="sd">    :type hmfiles: dict</span>
+<span class="sd">    :param szcell: The cell we are interested in.</span>
+<span class="sd">    :type szcell: str</span>
+<span class="sd">    :param szmarkdir: The directory with bedfiles to read.</span>
+<span class="sd">    :type szmarkdir: str</span>
+<span class="sd">    :param hmchrom: Maps chromosome names to an index.</span>
+<span class="sd">    :type hmchrom: dict</span>
+<span class="sd">    :param ninitval: The value that the data should be initialized to.</span>
+<span class="sd">    :type ninitval: int</span>
+<span class="sd">    :param bcontrol: if True, data is control dataz</span>
+<span class="sd">    :type bcontrol: bool</span>
 
-<span class="sd">    Args:</span>
-<span class="sd">        grid (numpy.ndarray): The array to load the read counts into.</span>
-<span class="sd">        bpresent (list): Indicates if there is a read for a chromosome with an index in hmchrom.</span>
-<span class="sd">        bpresentmark (list): Indicates if the mark is present in the cell type.</span>
-<span class="sd">        marks (list): Contains the names of the header marks.</span>
-<span class="sd">        nshift (int): The number of bases a read should be shifted in the 5&#39; to 3&#39; direction of a read.</span>
-<span class="sd">        nbinsize (int): The number of base pairs in a bin.</span>
-<span class="sd">        noffsetleft (int): The amount that should be subtracted from the left coordinate so it is 0-based inclusive.</span>
-<span class="sd">        noffsetright (int): The amount that should be subtracted from the right coordinate so it is 0-based inclusive.</span>
-<span class="sd">        hmfiles (dict): Maps cell and mark to an actual read file.</span>
-<span class="sd">        szcell (str): The cell we are interested in.</span>
-<span class="sd">        szmarkdir (str): The directory with bedfiles to read.</span>
-<span class="sd">        hmchrom (dict): Maps chromosome names to an index.</span>
-<span class="sd">        ninitval (int): The value that the data should be initialized to.</span>
-<span class="sd">        bcontrol (bool): if True, data is control data</span>
-
-<span class="sd">    Returns:</span>
-<span class="sd">        numpy.ndarray: The updated grid with the read counts.</span>
+<span class="sd">    :return: grid (numpy.ndarray): The updated grid with the read counts.</span>
 
 <span class="sd">    Calculation Details:</span>
 <span class="sd">        - Initializes necessary variables and data structures.</span>
@@ -627,10 +662,10 @@
                             <span class="k">if</span> <span class="n">nbin</span> <span class="o">&gt;=</span> <span class="mi">0</span> <span class="ow">and</span> <span class="n">nbin</span> <span class="o">&lt;</span> <span class="nb">len</span><span class="p">(</span><span class="n">grid</span><span class="p">[</span><span class="n">nchrom</span><span class="p">]):</span>
                                 <span class="n">grid</span><span class="p">[</span><span class="n">nchrom</span><span class="p">][</span><span class="n">nbin</span><span class="p">][</span><span class="n">nmark</span><span class="p">]</span> <span class="o">+=</span> <span class="mi">1</span>
                                 <span class="n">bpresent</span><span class="p">[</span><span class="n">nchrom</span><span class="p">]</span> <span class="o">=</span> <span class="kc">True</span>
-    <span class="k">return</span> <span class="n">grid</span>
+    <span class="k">return</span> <span class="n">grid</span></div>
 
 
-<span class="k">def</span> <span class="nf">determine_mark_thresholds_from_binned_data_array</span><span class="p">(</span>
+<div class="viewcode-block" id="determine_mark_thresholds_from_binned_data_array"><a class="viewcode-back" href="../../functions.html#chromTools.chmm_cmd.determine_mark_thresholds_from_binned_data_array">[docs]</a><span class="k">def</span> <span class="nf">determine_mark_thresholds_from_binned_data_array</span><span class="p">(</span>
     <span class="n">grid</span><span class="p">,</span> <span class="n">bpresent</span><span class="p">,</span> <span class="n">dpoissonthresh</span><span class="p">,</span> <span class="n">dfoldthresh</span><span class="p">,</span> <span class="n">bcontainsthresh</span><span class="p">,</span> <span class="n">dcountthresh</span>
 <span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Determines the Poisson cutoffs based on the provided data.</span>
@@ -638,17 +673,21 @@
 <span class="sd">    This function calculates the thresholds for each mark based on the provided binned data array. It uses the Poisson</span>
 <span class="sd">    distribution and other parameters to determine the cutoffs.</span>
 
-<span class="sd">    Args:</span>
-<span class="sd">        grid (int[]): The integer data values from which to determine the Poisson cutoffs.</span>
-<span class="sd">        bpresent (bool[]): A vector indicating which indices of grid to include in the analysis.</span>
-<span class="sd">        dpoissonthresh (float): The tail probability threshold on the Poisson.</span>
-<span class="sd">        dfoldthresh (float): The fold threshold required for a present call.</span>
-<span class="sd">        bcontainsthresh (bool): If True, the Poisson cutoff should be the highest that still contains dpoissonthresh probability.</span>
-<span class="sd">                                If False, it requires a strictly greater cutoff.</span>
-<span class="sd">        dcountthresh (float): The absolute signal threshold for a present call.</span>
+<span class="sd">    :param grid: The integer data values from which to determine the Poisson cutoffs.</span>
+<span class="sd">    :type grid: numpy.ndarray</span>
+<span class="sd">    :param bpresent: A vector indicating which indices of &#39;grid&#39; to include in the analysis.</span>
+<span class="sd">    :type bpresent: numpy.ndarray</span>
+<span class="sd">    :param dpoissonthresh: The tail probability threshold on the Poisson distribution.</span>
+<span class="sd">    :type dpoissonthresh: float</span>
+<span class="sd">    :param dfoldthresh: The fold threshold required for a present call.</span>
+<span class="sd">    :type dfoldthresh: float</span>
+<span class="sd">    :param bcontainsthresh: If True, the Poisson cutoff should be the highest value that still contains the &#39;dpoissonthresh&#39; probability.</span>
+<span class="sd">                            If False, it requires strictly greater.</span>
+<span class="sd">    :type bcontainsthresh: boolean</span>
+<span class="sd">    :param dcountthresh: The absolute signal threshold for a present call.</span>
+<span class="sd">    :type dcountthresh: float</span>
 
-<span class="sd">    Returns:</span>
-<span class="sd">        thresholds (list): Each element in this list represents the Poisson cutoff for a specific mark.</span>
+<span class="sd">    :return:  thresholds (list): Each element in this list represents the Poisson cutoff for a specific mark.</span>
 
 <span class="sd">    Calculation Details:</span>
 <span class="sd">        - Initializes variables and data structures.</span>
@@ -694,10 +733,10 @@
 
         <span class="n">thresholds</span><span class="p">[</span><span class="n">nj</span><span class="p">]</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">dfoldthresh</span> <span class="o">*</span> <span class="n">dlambda</span><span class="p">),</span> <span class="n">nthresh</span><span class="p">,</span> <span class="nb">int</span><span class="p">(</span><span class="n">dcountthresh</span><span class="p">))</span>
 
-    <span class="k">return</span> <span class="n">thresholds</span>
+    <span class="k">return</span> <span class="n">thresholds</span></div>
 
 
-<span class="k">def</span> <span class="nf">determine_mark_thresholds_from_binned_data_array_against_control</span><span class="p">(</span>
+<div class="viewcode-block" id="determine_mark_thresholds_from_binned_data_array_against_control"><a class="viewcode-back" href="../../functions.html#chromTools.chmm_cmd.determine_mark_thresholds_from_binned_data_array_against_control">[docs]</a><span class="k">def</span> <span class="nf">determine_mark_thresholds_from_binned_data_array_against_control</span><span class="p">(</span>
     <span class="n">grid</span><span class="p">,</span>
     <span class="n">gridcontrol</span><span class="p">,</span>
     <span class="n">bpresent</span><span class="p">,</span>
@@ -712,19 +751,25 @@
 <span class="sd">    This function calculates the thresholds for each mark by comparing the binned data array against the control data.</span>
 <span class="sd">    It uses the Poisson distribution to determine the thresholds based on various parameters.</span>
 
-<span class="sd">    Args:</span>
-<span class="sd">        grid (numpy.ndarray): The integer data values from which to determine the Poisson cutoffs.</span>
-<span class="sd">        gridcontrol (numpy.ndarray): The control data to which the thresholds will be relative.</span>
-<span class="sd">        bpresent (numpy.ndarray): A vector indicating which indices of &#39;grid&#39; to include in the analysis.</span>
-<span class="sd">        bpresentcontrol (numpy.ndarray): A vector indicating which indices of &#39;gridcontrol&#39; to include in the analysis.</span>
-<span class="sd">        dpoissonthresh (float): The tail probability threshold on the Poisson distribution.</span>
-<span class="sd">        dfoldthresh (float): The fold threshold required for a present call.</span>
-<span class="sd">        bcontainsthresh (bool): If True, the Poisson cutoff should be the highest value that still contains the &#39;dpoissonthresh&#39; probability.</span>
-<span class="sd">                                If False, it requires strictly greater.</span>
-<span class="sd">        dcountthresh (float): The absolute signal threshold for a present call.</span>
+<span class="sd">    :param grid: The integer data values from which to determine the Poisson cutoffs.</span>
+<span class="sd">    :type grid: numpy.ndarray</span>
+<span class="sd">    :param gridcontrol: The control data to which the thresholds will be relative.</span>
+<span class="sd">    :type gridcontrol: numpy.ndarray</span>
+<span class="sd">    :param bpresent: A vector indicating which indices of &#39;grid&#39; to include in the analysis.</span>
+<span class="sd">    :type bpresent: numpy.ndarray</span>
+<span class="sd">    :param bpresentcontrol: A vector indicating which indices of &#39;gridcontrol&#39; to include in the analysis.</span>
+<span class="sd">    :type bpresentcontrol: numpy.ndarray</span>
+<span class="sd">    :param dpoissonthresh: The tail probability threshold on the Poisson distribution.</span>
+<span class="sd">    :type dpoissonthresh: float</span>
+<span class="sd">    :param dfoldthresh: The fold threshold required for a present call.</span>
+<span class="sd">    :type dfoldthresh: float</span>
+<span class="sd">    :param bcontainsthresh: If True, the Poisson cutoff should be the highest value that still contains the &#39;dpoissonthresh&#39; probability.</span>
+<span class="sd">                            If False, it requires strictly greater.</span>
+<span class="sd">    :type bcontainsthresh: boolean</span>
+<span class="sd">    :param dcountthresh: The absolute signal threshold for a present call.</span>
+<span class="sd">    :type dcountthresh: float</span>
 
-<span class="sd">    Returns:</span>
-<span class="sd">        thresholds (list): Each element in this list represents the Poisson cutoff for a specific mark.</span>
+<span class="sd">    :return:  thresholds (list): Each element in this list represents the Poisson cutoff for a specific mark.</span>
 
 <span class="sd">    Calculation Details:</span>
 <span class="sd">        - Initializes variables and data structures.</span>
@@ -810,23 +855,25 @@
                 <span class="n">thresholds</span><span class="p">[</span><span class="n">nmark</span><span class="p">][</span><span class="n">nbackground</span><span class="p">]</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span>
                     <span class="nb">int</span><span class="p">(</span><span class="n">dfoldthresh</span> <span class="o">*</span> <span class="n">dlambda</span><span class="p">),</span> <span class="n">nthresh</span><span class="p">,</span> <span class="nb">int</span><span class="p">(</span><span class="n">dcountthresh</span><span class="p">)</span>
                 <span class="p">)</span>
-    <span class="k">return</span> <span class="n">thresholds</span>
+    <span class="k">return</span> <span class="n">thresholds</span></div>
 
 
-<span class="k">def</span> <span class="nf">window_sum_grid</span><span class="p">(</span><span class="n">gridcontrol</span><span class="p">,</span> <span class="n">sumgridcontrol</span><span class="p">,</span> <span class="n">nflankwidthcontrol</span><span class="p">):</span>
+<div class="viewcode-block" id="window_sum_grid"><a class="viewcode-back" href="../../functions.html#chromTools.chmm_cmd.window_sum_grid">[docs]</a><span class="k">def</span> <span class="nf">window_sum_grid</span><span class="p">(</span><span class="n">gridcontrol</span><span class="p">,</span> <span class="n">sumgridcontrol</span><span class="p">,</span> <span class="n">nflankwidthcontrol</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Calculates the windowed sum of values in the control grid.</span>
 
 <span class="sd">    This function iterates over chromosomes, bin positions, and marks in the control grid. For each bin position,</span>
 <span class="sd">    it sums the values within a window defined by the flank width. The resulting sum is stored in the corresponding</span>
 <span class="sd">    position of the sum grid.</span>
 
-<span class="sd">    Args:</span>
-<span class="sd">        gridcontrol (list): The control grid containing integer data values.</span>
-<span class="sd">        sumgridcontrol (list): The sum grid for storing the calculated sums.</span>
-<span class="sd">        nflankwidthcontrol (int): The flank width for the window (inclusive).</span>
+<span class="sd">    :param gridcontrol: The control grid containing integer data values.</span>
+<span class="sd">    :type gridcontrol: numpy.ndarray</span>
+<span class="sd">    :param sumgridcontrol: The sum grid for storing the calculated sums.</span>
+<span class="sd">    :type sumgridcontrol: numpy.ndarray</span>
+<span class="sd">    :param nflankwidthcontrol: The flank width for the window (inclusive).</span>
+<span class="sd">    :type nflankwidthcontrol: int</span>
 
-<span class="sd">    Returns:</span>
-<span class="sd">        sumgridcontrol (list): Updated sum grid with calculated sums.</span>
+<span class="sd">    :return: A tuple containing the updated control grid and sum grid.</span>
+<span class="sd">    :rtype: tuple[numpy.ndarray, numpy.ndarray]</span>
 
 <span class="sd">    Iteration Details:</span>
 <span class="sd">        - Iterates over each chromosome in the control grid.</span>
@@ -852,7 +899,7 @@
                         <span class="n">nsum</span> <span class="o">+=</span> <span class="n">nval</span>
 
                 <span class="n">sumgridcontrol</span><span class="p">[</span><span class="n">nchrom</span><span class="p">][</span><span class="n">nbin</span><span class="p">][</span><span class="n">nmark</span><span class="p">]</span> <span class="o">=</span> <span class="n">nsum</span>
-    <span class="k">return</span> <span class="n">gridcontrol</span><span class="p">,</span> <span class="n">sumgridcontrol</span>
+    <span class="k">return</span> <span class="n">gridcontrol</span><span class="p">,</span> <span class="n">sumgridcontrol</span></div>
 </pre></div>
         </article>
       </div>

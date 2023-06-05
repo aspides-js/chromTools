@@ -198,8 +198,8 @@
 <section id="input">
 <h2>Input<a class="headerlink" href="#input" title="Permalink to this heading">#</a></h2>
 <p>For all data types, <strong>chromTools complete</strong> takes as input a set of aligned <a class="reference external" href="https://genome.ucsc.edu/FAQ/FAQformat.html#format1">browser extensible data (BED)</a> files. The BED format is a concise and flexible way to represent genomic features and annotations. The format supports up to 12 columns, but for <strong>chromTools complete</strong> only the first <strong>4</strong> are required.</p>
-<section id="bed-required-columns">
-<h3>BED: required columns<a class="headerlink" href="#bed-required-columns" title="Permalink to this heading">#</a></h3>
+<section id="required-columns">
+<h3>Required columns<a class="headerlink" href="#required-columns" title="Permalink to this heading">#</a></h3>
 <ol class="arabic simple">
 <li><p><strong>chrom</strong> - The name of the chromosome.
 This column is required.</p></li>
@@ -215,7 +215,7 @@ This column is required.</p></li>
 </ol>
 </section>
 <section id="example-pipeline-and-input-file">
-<h3>Example: pipeline and input file<a class="headerlink" href="#example-pipeline-and-input-file" title="Permalink to this heading">#</a></h3>
+<h3>Example pipeline and input file<a class="headerlink" href="#example-pipeline-and-input-file" title="Permalink to this heading">#</a></h3>
 <p>A typical pipeline prior to using <strong>chromTools complete</strong> might be:</p>
 <p><code class="code docutils literal notranslate"><span class="pre">raw</span> <span class="pre">data</span> <span class="pre">&gt;</span> <span class="pre">qc</span> <span class="pre">&gt;</span> <span class="pre">alignment</span> <span class="pre">&gt;</span> <span class="pre">bamToBed</span></code></p>
 <p>Resulting in an aligned BED input file, e.g.:</p>
@@ -242,7 +242,7 @@ This column is required.</p></li>
 <section id="output">
 <h2>Output<a class="headerlink" href="#output" title="Permalink to this heading">#</a></h2>
 <p>The outputs from the various steps of <strong>chromTools complete</strong> are created in the following directory structure, within the <code class="code docutils literal notranslate"><span class="pre">--outdir</span></code> parameter.</p>
-<div class="highlight-ruby notranslate"><div class="highlight"><pre><span></span>&lt;outdir&gt;
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>&lt;outdir&gt;
 ├── 1_subsample/
 │   ├── downsampled.0.bed
 │   └── ...
@@ -260,7 +260,6 @@ This column is required.</p></li>
 </section>
 <section id="basic-usage">
 <h2>Basic usage<a class="headerlink" href="#basic-usage" title="Permalink to this heading">#</a></h2>
-<p><strong>chromTools complete</strong> is a single command line tool which takes as input a set of aligned BED files, and outputs a metric and plot indicating how complete the dataset is.</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ chromTools complete \
    --files/-f &lt;reads.bed&gt; \
    --control/-c &lt;controlreads.bed&gt; \
@@ -285,7 +284,7 @@ This column is required.</p></li>
 <p><code class="code docutils literal notranslate"><span class="pre">--genome/-g</span></code>: A two column tab delimited file with the first column being the chromosome and the second being the chromosome length. Genome assemblies hg18, hg19, hg38, mm9, mm10, rn5, rn6, danRer7, danRer10, dm3, dm6, ce6, and ce10 can be accessed by their genome assembly name (e.g. hg19). For other assemblies these can be obtained with the fetchChromSizes script available from the UCSC browser <a class="reference external" href="http://hgdownload.cse.ucsc.edu/admin/exe/">http://hgdownload.cse.ucsc.edu/admin/exe/</a> specifying the desired assembly and redirecting the output to a text file. Default: hg38.</p>
 <p><code class="code docutils literal notranslate"><span class="pre">--gsize</span> <span class="pre">&lt;int&gt;</span></code>: Size of genome using. Required if specifying own genome chromosome length file. Default: FALSE</p>
 <p><code class="code docutils literal notranslate"><span class="pre">--seed</span> <span class="pre">&lt;int&gt;</span></code>: The seed used for initiating randomization operations. Default: randomly generated.</p>
-<p><code class="code docutils literal notranslate"><span class="pre">--paired</span></code>: If specified data will be treated as paired end. Default: FALSE.</p>
+<p><code class="code docutils literal notranslate"><span class="pre">--paired</span></code>: If specified, data will be treated as paired end. Default: FALSE.</p>
 <p><code class="code docutils literal notranslate"><span class="pre">--force-overwrite</span></code>: If specified, files and directories in outdir will be overwritten. Default: FALSE.</p>
 </section>
 </section>
@@ -326,6 +325,12 @@ This column is required.</p></li>
 </section>
 <section id="interpretation">
 <span id="id1"></span><h2>Interpretation<a class="headerlink" href="#interpretation" title="Permalink to this heading">#</a></h2>
+<p>In the output two plots are generated, <code class="docutils literal notranslate"><span class="pre">mmplot.jpg</span></code> and <code class="docutils literal notranslate"><span class="pre">completeplot.jpg</span></code>.</p>
+<p><code class="docutils literal notranslate"><span class="pre">completeplot</span></code> shows the proportion of marks found, plotted against the read number.</p>
+<p>In the plot below, you can see an example of a complete dataset. Here, the proportion of marks has reached a plateau where even with the addition of more reads, there is not an increase in information. Therefore, this indicates that the dataset represents the totality of possible marks.</p>
+<p><code class="docutils literal notranslate"><span class="pre">mmplot</span></code> gives an indication of the saturation point of the dataset, i.e. the proportion of marks present. The more complete a dataset is, the more accurate this will be. It also gives</p>
+<a class="reference internal image-reference" href="_static/img/goodmmplt.jpg"><img alt="Bad MM plot" src="_static/img/goodmmplt.jpg" style="width: 50%;" /></a>
+<a class="reference internal image-reference" href="_static/img/badmmplt.jpg"><img alt="Bad MM plot" src="_static/img/badmmplt.jpg" style="width: 50%;" /></a>
 </section>
 </section>
 
@@ -386,8 +391,8 @@ This column is required.</p></li>
             <ul>
 <li><a class="reference internal" href="#">General Usage</a><ul>
 <li><a class="reference internal" href="#input">Input</a><ul>
-<li><a class="reference internal" href="#bed-required-columns">BED: required columns</a></li>
-<li><a class="reference internal" href="#example-pipeline-and-input-file">Example: pipeline and input file</a></li>
+<li><a class="reference internal" href="#required-columns">Required columns</a></li>
+<li><a class="reference internal" href="#example-pipeline-and-input-file">Example pipeline and input file</a></li>
 </ul>
 </li>
 <li><a class="reference internal" href="#output">Output</a></li>
