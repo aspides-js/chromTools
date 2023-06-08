@@ -92,7 +92,7 @@ def make_binary_data_from_bed(n, options):
 
     if not options.control:
         hscellnocontrol = hscells
-        hscellcontrol = set()
+        hscellcontrol = None
     else:
         hscellcontrol = hscells
         hscellnocontrol = set()
