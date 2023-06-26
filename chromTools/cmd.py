@@ -354,7 +354,7 @@ def param_plot(r, outdir):
     """
     df = pd.DataFrame(r)
     plt.figure(figsize=(10, 6), tight_layout=True)
-    plt.plot(df.loc[0].tolist(), df.loc[1].tolist(), "s-")
+    plt.plot(df.loc[0].tolist(), df.loc[1].tolist(), "s-", color = "#06846a")
     plt.xlabel("Number of Reads")
     plt.ylabel("Proportion of marks")
     plt.savefig(pathlib.Path(outdir / "completeplot.jpg"))
@@ -397,9 +397,9 @@ def mm(df, outdir):
     plt.plot(fm, v(fm, result.params["Vm"].value, result.params["Km"].value), "k")
     plt.xlabel("[S] (reads)")
     plt.ylabel("v (proportion)")
-    plt.axhline(y=result.params["Vm"].value, linestyle="-")
-    if result.params["Km"].value > max(data[0]):
-        plt.axvline(x=result.params["Km"].value, linestyle="-")
+    plt.axhline(y=result.params["Vm"].value, linestyle="-", color = "#06846a")
+    if result.params["Km"].value < max(data[0]):
+        plt.axvline(x=result.params["Km"].value, linestyle="-", color = "#06846a")
 
     plt.title(label=f'Vm: {result.params["Vm"].value}')
     plt.savefig(pathlib.Path(outdir / "mmplot.jpg"))
