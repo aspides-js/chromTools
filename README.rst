@@ -1,7 +1,9 @@
 chromTools
 ==========
 
-chromTools complete is a tool to assess the completeness of your epigenetic dataset. Can be used with ChIP-seq, ATAC-seq or WGBS data.
+chromTools complete is a tool to assess the completeness of your epigenetic dataset. Can be used with ChIP-seq, ATAC-seq or WGBS data, required files are aligned BED files.
+
+For detailed documentation, please visit the `documentation pages <https://aspides-js.github.io/chromTools/>`_.
 
 For questions on installation or usage, please open an issue or contact Jessica Shields (j.m.shields@exeter.ac.uk).
 
