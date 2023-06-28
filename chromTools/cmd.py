@@ -34,7 +34,7 @@ def run(options):
             options (Namespace object): Command line options
     """
     ## Concatenating
-    cat_bed(options.files, options.control, options.subdir, options.info)
+    # cat_bed(options.files, options.control, options.subdir, options.info)
     total, nfile = wc(
         options.increment, options.subdir, options.info, options.warn, options.paired
     )
@@ -46,17 +46,17 @@ def run(options):
     options.info(f"CPU number: {str(mp.cpu_count())}")
 
     pool = mp.Pool()
-    args = [
-        (n, options, total) for n in range(1, nfile)
-    ]  # nfile should be number calculated by wc()
+    # args = [
+    #     (n, options, total) for n in range(1, nfile)
+    # ]  # nfile should be number calculated by wc()
 
     r = {}  # initiate empty dictionary
-    for res in pool.starmap(downsample, args):
-        r.setdefault(res[0], [])
-        r[res[0]].append(res[1])
-        options.info(f"--- {(time.time() - start_time)} seconds ---")
+    # for res in pool.starmap(downsample, args):
+    #     r.setdefault(res[0], [])
+    #     r[res[0]].append(res[1])
+    #     options.info(f"--- {(time.time() - start_time)} seconds ---")
 
-    print(r)
+    # print(r)
     ## Binarising
     options.info("CHMM binarising...")
     args = [
@@ -354,7 +354,7 @@ def param_plot(r, outdir):
     """
     df = pd.DataFrame(r)
     plt.figure(figsize=(10, 6), tight_layout=True)
-    plt.plot(df.loc[0].tolist(), df.loc[1].tolist(), "s-", color = "#06846a")
+    plt.plot(df.loc[0].tolist(), df.loc[1].tolist(), "s-", color="#06846a")
     plt.xlabel("Number of Reads")
     plt.ylabel("Proportion of marks")
     plt.savefig(pathlib.Path(outdir / "completeplot.jpg"))
@@ -397,9 +397,9 @@ def mm(df, outdir):
     plt.plot(fm, v(fm, result.params["Vm"].value, result.params["Km"].value), "k")
     plt.xlabel("[S] (reads)")
     plt.ylabel("v (proportion)")
-    plt.axhline(y=result.params["Vm"].value, linestyle="-", color = "#06846a")
+    plt.axhline(y=result.params["Vm"].value, linestyle="-", color="#06846a")
     if result.params["Km"].value < max(data[0]):
-        plt.axvline(x=result.params["Km"].value, linestyle="-", color = "#06846a")
+        plt.axvline(x=result.params["Km"].value, linestyle="-", color="#06846a")
 
     plt.title(label=f'Vm: {result.params["Vm"].value}')
     plt.savefig(pathlib.Path(outdir / "mmplot.jpg"))

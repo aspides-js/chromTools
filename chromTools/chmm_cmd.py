@@ -8,6 +8,7 @@
 import math
 import os
 import pathlib
+import numba as nb
 
 import numpy as np
 
@@ -156,7 +157,7 @@ def make_binary_data_from_bed(n, options):
                 numcontrolmarks = nummarks
 
         # loading data for the cell type
-        grid = load_grid(
+        grid, bpresent, bpresentmarks = load_grid(
             grid,
             bpresent,
             bpresentmarks,
@@ -186,7 +187,7 @@ def make_binary_data_from_bed(n, options):
                     )
 
             # we have control data loading cell type data for that
-            gridcontrol = load_grid(
+            gridcontrol, bpresent, bpresentmarks = load_grid(
                 gridcontrol,
                 bpresentcontrol,
                 bpresentmarkscontrol,
@@ -208,7 +209,6 @@ def make_binary_data_from_bed(n, options):
     count = 0  # number of marks
     total = 0  # total bins in each chr
     if bcontrolfile:
-        print("This is being run")
         # binarization will be based on control data
 
         # smoothing control data
@@ -331,6 +331,10 @@ def make_binary_data_from_bed(n, options):
 
 
 # --------------------------------------
+
+
+# @njit
+# def calc_grid():
 
 
 def load_grid(
@@ -468,9 +472,10 @@ def load_grid(
                             if nbin >= 0 and nbin < len(grid[nchrom]):
                                 grid[nchrom][nbin][nmark] += 1
                                 bpresent[nchrom] = True
-    return grid
+    return grid, bpresent, bpresentmarks
 
 
+@nb.njit
 def determine_mark_thresholds_from_binned_data_array(
     grid, bpresent, dpoissonthresh, dfoldthresh, bcontainsthresh, dcountthresh
 ):
@@ -542,6 +547,7 @@ def determine_mark_thresholds_from_binned_data_array(
     return thresholds
 
 
+@nb.njit
 def determine_mark_thresholds_from_binned_data_array_against_control(
     grid,
     gridcontrol,
@@ -588,7 +594,8 @@ def determine_mark_thresholds_from_binned_data_array_against_control(
         - The thresholds are computed based on the Poisson distribution and various parameters provided.
 
     """
-    dcumthreshold = 1 - dpoissonthresh
+
+    dcumthreshold = nb.float32(1 - dpoissonthresh)
 
     nummarks = len(grid[0][0])
     numcontrolmarks = len(gridcontrol[0][0])
@@ -664,6 +671,7 @@ def determine_mark_thresholds_from_binned_data_array_against_control(
     return thresholds
 
 
+@nb.njit
 def window_sum_grid(gridcontrol, sumgridcontrol, nflankwidthcontrol):
     """Calculates the windowed sum of values in the control grid.
 
