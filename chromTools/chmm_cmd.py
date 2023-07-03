@@ -8,8 +8,10 @@
 import math
 import os
 import pathlib
-import numba as nb
+import time
+import sys
 
+import numba as nb
 import numpy as np
 
 # ------------------------------------
@@ -79,44 +81,40 @@ def make_binary_data_from_bed(n, options):
     """
 
     ## set starting options
+    start_time = time.time()
     nbinsize = 200
-    bcontrol = False
     szcell = f"{n}"
     szmark = "mark"
-    hscells = set()
-    hsmarks = set()
-    hscells.add(szcell)
-    hsmarks.add(szmark)
-    hmfiles = {}
-    hmfilescontrol = {}
-    hmfiles[f"{szcell}\t{szmark}"] = [f"downsampled.{n}.bed"]
+    hscells = set([szcell])
+    hsmarks = set([szmark])
+    hmfiles = {f"{szcell}\t{szmark}": [f"downsampled.{n}.bed"]}
 
     if not options.control:
         hscellnocontrol = hscells
         hscellcontrol = None
+        bcontrol = False
     else:
         hscellcontrol = hscells
         hscellnocontrol = set()
-        hmfilescontrol[f"{szcell}\t{szmark}"] = ["downsampled.ctrl.bed"]
+        hmfilescontrol = {f"{szcell}\t{szmark}": ["downsampled.ctrl.bed"]}
         bcontrol = True
 
     ## reads in the chromosome length information file
     # the first column of this file is the chromosome and the second is the chromsome length
     with open(options.szchromlengthfile) as brchrom:
         allines = brchrom.readlines()
-
-    chroms = []  # stores the chromosome name
-    lengths = []  # stores the chromosome length
-    hmchrom = {}  # stores a mapping of chromosome to chromosome index
-    for szLine in allines:
-        st = szLine.strip().split()
-        if len(st) < 2:
-            raise ValueError(f"Invalid line found in {options.szchromlengthfile}")
-        chrom = st[0]
-        length = int(st[1])
-        chroms.append(chrom)
-        hmchrom[chrom] = len(chroms) - 1
-        lengths.append(length)
+        chroms = []  # stores the chromosome name
+        lengths = []  # stores the chromosome length
+        hmchrom = {}  # stores a mapping of chromosome to chromosome index
+        for szLine in allines:
+            st = szLine.strip().split()
+            if len(st) < 2:
+                raise ValueError(f"Invalid line found in {options.szchromlengthfile}")
+            chrom = st[0]
+            length = int(st[1])
+            chroms.append(chrom)
+            hmchrom[chrom] = len(chroms) - 1
+            lengths.append(length)
 
     # loads all the marks in hsmarks into the array marks and then sorts it
     nummarks = len(hsmarks)
@@ -157,6 +155,8 @@ def make_binary_data_from_bed(n, options):
                 numcontrolmarks = nummarks
 
         # loading data for the cell type
+        print(time.time() - start_time)
+        print("LOAD GRID")
         grid, bpresent, bpresentmarks = load_grid(
             grid,
             bpresent,
@@ -174,6 +174,7 @@ def make_binary_data_from_bed(n, options):
             bcontrol,
         )
 
+        print(time.time() - start_time)
         if bcontrolfile:
             if gridcontrol[0] is None or len(gridcontrol[0][0]) != numcontrolmarks:
                 # reallocate if changing array size
@@ -187,7 +188,8 @@ def make_binary_data_from_bed(n, options):
                     )
 
             # we have control data loading cell type data for that
-            gridcontrol, bpresent, bpresentmarks = load_grid(
+            print("LOAD GRID CONTROL")
+            gridcontrol, bpresentcontrol, bpresentmarkscontrol = load_grid(
                 gridcontrol,
                 bpresentcontrol,
                 bpresentmarkscontrol,
@@ -203,30 +205,52 @@ def make_binary_data_from_bed(n, options):
                 options.npseudocountcontrol,
                 bcontrol,
             )
-
+            print(time.time() - start_time)
     nummarks_m1 = nummarks - 1
 
-    count = 0  # number of marks
-    total = 0  # total bins in each chr
+    count, total = 0, 0  # number of marks & total bins in each chr
     if bcontrolfile:
         # binarization will be based on control data
-
-        # smoothing control data
-        gridcontrol, sumgridcontrol = window_sum_grid(
-            gridcontrol, sumgridcontrol, options.nflankwidthcontrol
-        )
-
+        # print(time.time() - start_time)
+        # print("windowsumgrid")
+        # # smoothing control data
+        # gridcontrol, sumgridcontrol = window_sum_grid(
+        #     gridcontrol, sumgridcontrol, options.nflankwidthcontrol
+        # )
+        ## adaptation to use Numba gridcontrol is pyobject so give numpy array (gridcontrol[nchrom])
+        print(time.time() - start_time)
+        print("windowsumgrid_numba")
+        for nchrom in range(len(gridcontrol)):
+            gridcontrol[nchrom], sumgridcontrol[nchrom] = window_sum_grid_numba(
+                gridcontrol[nchrom], sumgridcontrol[nchrom], options.nflankwidthcontrol
+            )
         # determiming thresholds for each mark and background depth
-        thresholds = determine_mark_thresholds_from_binned_data_array_against_control(
-            grid,
-            sumgridcontrol,
-            bpresent,
-            bpresentcontrol,
-            options.dpoissonthresh,
-            options.dfoldthresh,
-            options.bcontainsthresh,
-            options.dcountthresh,
+        options.info("DETERMINE FROM BINNED CTL_numba")
+        thresholds = (
+            determine_mark_thresholds_from_binned_data_array_against_control_numba(
+                grid,
+                sumgridcontrol,
+                bpresent,
+                bpresentcontrol,
+                options.dpoissonthresh,
+                options.dfoldthresh,
+                options.bcontainsthresh,
+                options.dcountthresh,
+            )
         )
+        # print(time.time() - start_time)
+        # options.info("DETERMINE FROM BINNED CTL")
+        # thresholds = determine_mark_thresholds_from_binned_data_array_against_control(
+        #     grid,
+        #     sumgridcontrol,
+        #     bpresent,
+        #     bpresentcontrol,
+        #     options.dpoissonthresh,
+        #     options.dfoldthresh,
+        #     options.bcontainsthresh,
+        #     options.dcountthresh,
+        # )
+        print(time.time() - start_time)
         for nchrom in range(len(chroms)):
             if bpresent[nchrom] and bpresentcontrol[nchrom]:
                 # we have both primary and control data for the mark
@@ -234,31 +258,26 @@ def make_binary_data_from_bed(n, options):
                     options.szoutputbinarydir,
                     f"{szcell}_{chroms[nchrom]}_binary.txt",
                 )
-                print("Writing to file", szfile)
+                # print("Writing to file", szfile)
                 with open(szfile, "w") as pw:
                     pw.write(f"{szcell}\t{chroms[nchrom]}\n")
                     for nmark in range(nummarks_m1):
                         pw.write(f"{marks[nmark]}\t")
                     pw.write(f"{marks[nummarks_m1]}\n")
 
-                    grid_nchrom = grid[nchrom]
-                    sumgridcontrol_nchrom = sumgridcontrol[nchrom]
-                    for nbin in range(len(grid_nchrom)):
-                        grid_nchrom_nbin = grid_nchrom[nbin]
-                        sumgrid_nchrom_nbin = sumgridcontrol_nchrom[nbin]
-
+                    for nbin in range(len(grid[nchrom])):
                         for nmark in range(nummarks_m1):
                             if numcontrolmarks == 1:
-                                ncontrolval = sumgrid_nchrom_nbin[0]
+                                ncontrolval = sumgridcontrol[nchrom][nbin][0]
                             else:
-                                ncontrolval = sumgrid_nchrom_nbin[nmark]
+                                ncontrolval = sumgridcontrol[nchrom][nbin][nmark]
 
                             # printing one if count exceeds background threshold
                             if not bpresentmarks[nmark]:
                                 pw.write("2\t")
                             elif (
                                 thresholds[nmark][ncontrolval]
-                                <= grid_nchrom_nbin[nmark]
+                                <= grid[nchrom][nbin][nmark]
                             ):
                                 pw.write("1\t")
                                 count += 1
@@ -268,15 +287,15 @@ def make_binary_data_from_bed(n, options):
                                 total += 1
 
                         if numcontrolmarks == 1:
-                            ncontrolval = sumgrid_nchrom_nbin[0]
+                            ncontrolval = sumgridcontrol[nchrom][nbin][0]
                         else:
-                            ncontrolval = sumgrid_nchrom_nbin[nummarks_m1]
+                            ncontrolval = sumgridcontrol[nchrom][nbin][nummarks_m1]
 
                         if not bpresentmarks[nummarks_m1]:
                             pw.write("2\n")
                         elif (
                             thresholds[nummarks_m1][ncontrolval]
-                            <= grid_nchrom_nbin[nummarks_m1]
+                            <= grid[nchrom][nbin][nummarks_m1]
                         ):
                             pw.write("1\n")
                             count += 1
@@ -284,10 +303,11 @@ def make_binary_data_from_bed(n, options):
                         else:
                             pw.write("0\n")
                             total += 1
-
+        print(time.time() - start_time)
     else:  ## if no control file
         print("Treating as no control")
-        thresholds = determine_mark_thresholds_from_binned_data_array(
+        options.info("DETERMINE FROM BINNED_numba")
+        thresholds = determine_mark_thresholds_from_binned_data_array_numba(
             grid,
             bpresent,
             options.dpoissonthresh,
@@ -295,46 +315,41 @@ def make_binary_data_from_bed(n, options):
             options.bcontainsthresh,
             options.dcountthresh,
         )
-
+        print(time.time() - start_time)
         for nchrom in range(len(chroms)):
             if bpresent[nchrom]:
                 szfile = os.path.join(
                     options.szoutputbinarydir,
                     szcell + "_" + chroms[nchrom] + "_binary.txt",
                 )
-                print("Writing to file " + szfile)
+                # print("Writing to file " + szfile)
                 with open(szfile, "w") as pw:
                     pw.write(f"{szcell}\t{chroms[nchrom]}\n")
                     for nmark in range(len(marks) - 1):
                         pw.write(f"{marks[nmark]}\t")
                     pw.write(f"{marks[nummarks_m1]}\n")
-                    grid_nchrom = grid[nchrom]
-                    for nbin in range(len(grid_nchrom)):
-                        grid_nchrom_nbin = grid_nchrom[nbin]
+                    for nbin in range(len(grid[nchrom])):
                         for nmark in range(nummarks_m1):
                             if not bpresentmarks[nmark]:
                                 pw.write("2\t")
-                            elif thresholds[nmark] <= grid_nchrom_nbin[nmark]:
+                            elif thresholds[nmark] <= grid[nchrom][nbin][nmark]:
                                 pw.write("1\t")
                             else:
                                 pw.write("0\t")
                         if not bpresentmarks[nummarks_m1]:
                             pw.write("2\n")
-                        elif thresholds[nummarks_m1] <= grid_nchrom_nbin[nummarks_m1]:
+                        elif thresholds[nummarks_m1] <= grid[nchrom][nbin][nummarks_m1]:
                             pw.write("1\n")
                             count += 1
                             total += 1
                         else:
                             pw.write("0\n")
                             total += 1
+        print(time.time() - start_time)
     return count, total
 
 
 # --------------------------------------
-
-
-# @njit
-# def calc_grid():
 
 
 def load_grid(
@@ -403,25 +418,13 @@ def load_grid(
 
     """
     nummarks = len(grid[0][0])
+
     # columns
-    nchromcol = 0
-    nbegincol = 1
-    nendcol = nbegincol + 1
-    nstrandcol = -1
-    nmaxindex = -1
+    nchromcol, nbegincol, nendcol, nstrandcol, nmaxindex = 0, 1, 2, -1, -1
+
     # going through all the mark files in each cell type
     for nmark in range(nummarks):
         alfiles = hmfiles.get(f"{szcell}\t{marks[nmark]}")
-
-        if (nummarks == 1) and bcontrol:
-            # this code was added in version 1.04 to handle the situation in which there is a missing mark
-            # in the first position, but control data can be listed elsewhere
-            # trying to find a listing where control data is available.
-            nfilemark = 1
-            while (alfiles is None) and (nfilemark < len(marks)):
-                # only one control for the cell looking for a valid one
-                alfiles = hmfiles.get(f"{szcell}\t{marks[nfilemark]}")
-                nfilemark += 1
 
         if alfiles is None:
             if bcontrol:
@@ -437,10 +440,9 @@ def load_grid(
             if not bcontrol:
                 # slight efficiency improvement here in v1.04
                 for nchrom in range(len(grid)):
-                    grid_nchrom = grid[nchrom]
-                    numbins = len(grid_nchrom)
+                    numbins = len(grid[nchrom])
                     for nbin in range(numbins):
-                        grid_nchrom[nbin][nmark] = -1
+                        grid[nchrom][nbin][nmark] = -1
         else:
             bpresentmarks[nmark] = True
             for nfile in range(len(alfiles)):
@@ -475,7 +477,6 @@ def load_grid(
     return grid, bpresent, bpresentmarks
 
 
-@nb.njit
 def determine_mark_thresholds_from_binned_data_array(
     grid, bpresent, dpoissonthresh, dfoldthresh, bcontainsthresh, dcountthresh
 ):
@@ -526,7 +527,8 @@ def determine_mark_thresholds_from_binned_data_array(
                 for nmark in range(nummarks):
                     sumtags[nmark] += grid_nchrom_nbin[nmark]
             ntotallocs += len(grid_nchrom)
-
+    print(f"sumtags is: {sumtags}")
+    print(f"hscontrol is: {ntotallocs}")
     for nj in range(len(sumtags)):
         dlambda = sumtags[nj] / ntotallocs
         dcum = 0
@@ -547,7 +549,200 @@ def determine_mark_thresholds_from_binned_data_array(
     return thresholds
 
 
+def determine_mark_thresholds_from_binned_data_array_numba(
+    grid, bpresent, dpoissonthresh, dfoldthresh, bcontainsthresh, dcountthresh
+):
+    """Determines the Poisson cutoffs based on the provided data.
+
+    This function calculates the thresholds for each mark based on the provided binned data array. It uses the Poisson
+    distribution and other parameters to determine the cutoffs.
+
+    :param grid: The integer data values from which to determine the Poisson cutoffs.
+    :type grid: numpy.ndarray
+    :param bpresent: A vector indicating which indices of 'grid' to include in the analysis.
+    :type bpresent: numpy.ndarray
+    :param dpoissonthresh: The tail probability threshold on the Poisson distribution.
+    :type dpoissonthresh: float
+    :param dfoldthresh: The fold threshold required for a present call.
+    :type dfoldthresh: float
+    :param bcontainsthresh: If True, the Poisson cutoff should be the highest value that still contains the 'dpoissonthresh' probability.
+                            If False, it requires strictly greater.
+    :type bcontainsthresh: boolean
+    :param dcountthresh: The absolute signal threshold for a present call.
+    :type dcountthresh: float
+
+    :return:  thresholds (list): Each element in this list represents the Poisson cutoff for a specific mark.
+
+    Calculation Details:
+        - Initializes variables and data structures.
+        - Computes the sum of data values for each mark across all relevant bins and chromosomes.
+        - Calculates the total number of bins considered for threshold determination.
+        - Computes the threshold for each mark based on the Poisson distribution.
+        - Adjusts the threshold based on the bcontainsthresh parameter.
+        - Sets the final threshold for each mark as the maximum value among various calculations.
+
+    Note:
+        - The thresholds are computed based on the Poisson distribution and various parameters provided.
+
+    """
+    dcumthreshold = 1 - dpoissonthresh
+    nummarks = len(grid[0][0])
+    ntotallocs = 0
+    sumtags = np.array([0] * nummarks)
+    thresholds = [0] * nummarks
+
+    for nchrom in range(len(grid)):
+        if bpresent[nchrom]:
+            grid_nchrom = grid[nchrom]
+            ntotallocs, sumtags = determine_sumtags_numba(
+                grid_nchrom,
+                nummarks,
+                sumtags,
+                ntotallocs,
+            )
+    print(f"sumtags is: {sumtags}")
+    print(f"hscontrol is: {ntotallocs}")
+    for nj in range(len(sumtags)):
+        dlambda = sumtags[nj] / ntotallocs
+        dcum, nthresh, dlogfactorial = 0, 0, 0
+
+        while dcum <= dcumthreshold:
+            dprob = math.exp(math.log(dlambda) * nthresh - dlambda - dlogfactorial)
+            dcum += dprob
+            nthresh += 1
+            dlogfactorial += math.log(nthresh)
+
+        if bcontainsthresh:
+            nthresh -= 1
+
+        thresholds[nj] = max(int(dfoldthresh * dlambda), nthresh, int(dcountthresh))
+
+    return thresholds
+
+
 @nb.njit
+def determine_sumtags_numba(
+    grid_nchrom,
+    nummarks,
+    sumtags,
+    ntotallocs,
+):
+    for nbin in range(len(grid_nchrom)):
+        for nmark in range(nummarks):
+            sumtags[nmark] += grid_nchrom[nbin][nmark]
+    ntotallocs += len(grid_nchrom)
+    return ntotallocs, sumtags
+
+
+@nb.njit
+def determine_sumtags_ctrl_numba(
+    grid_nchrom,
+    nummarks,
+    sumtags,
+    gridcontrol_nchrom,
+    numcontrolmarks,
+    maxcontrol,
+    hscontrol,
+    sumtagscontrol,
+    nchrom_nbin,
+):
+    for nbin in range(len(grid_nchrom)):
+        nchrom_nbin += 1
+        for nmark in range(nummarks):
+            # int nval = grid_nchrom_nbin[nmark];
+            if numcontrolmarks == 1:
+                ncontrolval = gridcontrol_nchrom[nbin][0]
+            else:
+                ncontrolval = gridcontrol_nchrom[nbin][nmark]
+            if ncontrolval > maxcontrol[nmark]:
+                maxcontrol[nmark] = ncontrolval
+            hscontrol[nmark][nchrom_nbin] = ncontrolval
+            sumtags[nmark] += grid_nchrom[nbin][nmark]
+            sumtagscontrol[nmark] += ncontrolval
+    return hscontrol, sumtags, sumtagscontrol, maxcontrol, nchrom_nbin
+
+
+def determine_mark_thresholds_from_binned_data_array_against_control_numba(
+    grid,
+    gridcontrol,
+    bpresent,
+    bpresentcontrol,
+    dpoissonthresh,
+    dfoldthresh,
+    bcontainsthresh,
+    dcountthresh,
+):
+    dcumthreshold = 1 - dpoissonthresh
+
+    nummarks = len(grid[0][0])
+    numcontrolmarks = len(gridcontrol[0][0])
+    sumtags = np.array([0] * nummarks)
+    sumtagscontrol = np.array([0] * nummarks)
+    thresholds = [0] * nummarks
+    maxcontrol = np.array([0] * nummarks)
+    x = 0
+    for nchrom in range(len(grid)):
+        x += len(grid[nchrom])
+
+    hscontrol_np = np.empty([len(range(nummarks)), x], dtype=int)
+
+    x = -1
+    for nchrom in range(len(grid)):
+        if bpresent[nchrom] and bpresentcontrol[nchrom]:
+            grid_nchrom = grid[nchrom]
+            gridcontrol_nchrom = gridcontrol[nchrom]
+            (
+                hscontrol_np,
+                sumtags,
+                sumtagscontrol,
+                maxcontrol,
+                x,
+            ) = determine_sumtags_ctrl_numba(
+                grid_nchrom,
+                nummarks,
+                sumtags,
+                gridcontrol_nchrom,
+                numcontrolmarks,
+                maxcontrol,
+                hscontrol_np,
+                sumtagscontrol,
+                x,
+            )
+    hscontrol = []
+    for i in hscontrol_np:
+        hscontrol.append(set(i))
+    print(f"sumtagsconteol is: {sumtagscontrol}")
+    print(f"sumtags is: {sumtags}")
+    print(f"hscontrol is: {hscontrol}")
+    print(f"maxcontrol is: {maxcontrol}")
+
+    for nmark in range(len(sumtags)):
+        thresholds[nmark] = [0] * (maxcontrol[nmark] + 1)
+        davgratio = sumtags[nmark] / sumtagscontrol[nmark]
+        thresholds[nmark][0] = max(int(dcountthresh), 1)
+        for nbackground in range(1, maxcontrol[nmark] + 1):
+            # bug fixed in 1.14 that changes less than to less than equal
+            if nbackground in hscontrol[nmark]:
+                dlambda = davgratio * nbackground
+                dcum, nthresh, dlogfactorial = 0, 0, 0
+                while dcum <= dcumthreshold:
+                    dprob = math.exp(
+                        math.log(dlambda) * nthresh - dlambda - dlogfactorial
+                    )
+                    dcum += dprob
+                    nthresh += 1
+                    dlogfactorial += math.log(nthresh)
+
+                if bcontainsthresh:
+                    # decreasing to include the dpoissonthreshold probability
+                    nthresh -= 1
+
+                thresholds[nmark][nbackground] = max(
+                    int(dfoldthresh * dlambda), nthresh, int(dcountthresh)
+                )
+    return thresholds
+
+
 def determine_mark_thresholds_from_binned_data_array_against_control(
     grid,
     gridcontrol,
@@ -595,7 +790,7 @@ def determine_mark_thresholds_from_binned_data_array_against_control(
 
     """
 
-    dcumthreshold = nb.float32(1 - dpoissonthresh)
+    dcumthreshold = nb.float32(1 - np.float32(dpoissonthresh))
 
     nummarks = len(grid[0][0])
     numcontrolmarks = len(gridcontrol[0][0])
@@ -629,6 +824,11 @@ def determine_mark_thresholds_from_binned_data_array_against_control(
                     sumtags[nmark] += grid[nchrom][nbin][nmark]
                     sumtagscontrol[nmark] += ncontrolval
 
+    print(f"sumtagsconteol is: {sumtagscontrol}")
+    print(f"sumtags is: {sumtags}")
+    print(f"hscontrol is: {hscontrol}")
+    print(f"maxcontrol is: {maxcontrol}")
+
     for nmark in range(len(sumtags)):
         # computing threshold for each mark
         thresholds[nmark] = [0] * (maxcontrol[nmark] + 1)
@@ -649,9 +849,7 @@ def determine_mark_thresholds_from_binned_data_array_against_control(
                 # read depth enrichment for sumtags
                 dlambda = davgratio * nbackground
 
-                dcum = 0
-                nthresh = 0
-                dlogfactorial = 0
+                dcum, nthresh, dlogfactorial = 0, 0, 0
 
                 while dcum <= dcumthreshold:
                     dprob = math.exp(
@@ -671,7 +869,6 @@ def determine_mark_thresholds_from_binned_data_array_against_control(
     return thresholds
 
 
-@nb.njit
 def window_sum_grid(gridcontrol, sumgridcontrol, nflankwidthcontrol):
     """Calculates the windowed sum of values in the control grid.
 
@@ -704,13 +901,28 @@ def window_sum_grid(gridcontrol, sumgridcontrol, nflankwidthcontrol):
         for nbin in range(len(sumgridcontrol[nchrom])):
             nstart = max(0, nbin - nflankwidthcontrol)
             nend = min(nbin + nflankwidthcontrol, len(gridcontrol[nchrom]) - 1)
-
             for nmark in range(len(sumgridcontrol[nchrom][nbin])):
                 nsum = 0
                 for nrow in range(nstart, nend + 1):
                     nval = gridcontrol[nchrom][nrow][nmark]
                     if nval > 0:
                         nsum += nval
-
                 sumgridcontrol[nchrom][nbin][nmark] = nsum
     return gridcontrol, sumgridcontrol
+
+
+@nb.njit
+def window_sum_grid_numba(
+    gridcontrol_nchrom, sumgridcontrol_nchrom, nflankwidthcontrol
+):
+    for nbin in range(len(sumgridcontrol_nchrom)):
+        nstart = max(0, nbin - nflankwidthcontrol)
+        nend = min(nbin + nflankwidthcontrol, len(gridcontrol_nchrom) - 1)
+        for nmark in range(len(sumgridcontrol_nchrom[nbin])):
+            nsum = 0
+            for nrow in range(nstart, nend + 1):
+                nval = gridcontrol_nchrom[nrow][nmark]
+                if nval > 0:
+                    nsum += nval
+            sumgridcontrol_nchrom[nbin][nmark] = nsum
+    return gridcontrol_nchrom, sumgridcontrol_nchrom
