@@ -27,7 +27,7 @@ from chromTools.validate import args_validator
 def main():
     """
     The Main function/pipeline for chromTools.
-
+    
     """
 
     description = (

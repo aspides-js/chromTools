@@ -18,7 +18,7 @@ import numpy as np
 # ------------------------------------
 
 
-def make_gridcontrol(options):
+def make_control_grid(options):
     """
     Generate control grid and sum grid for binning control data.
 
