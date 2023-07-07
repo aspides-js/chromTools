@@ -139,12 +139,21 @@ Interpretation
 In the output two plots are generated, ``mmplot.jpg`` and ``completeplot.jpg``. 
 
 ``completeplot`` shows the proportion of marks found, plotted against the read number.
+``mmplot`` gives an indication of the saturation point of the dataset, i.e. the proportion of marks present. The more complete a dataset is, the more accurate this will be. It also gives 
 
 In the plot below, you can see an example of a complete dataset. Here, the proportion of marks has reached a plateau where even with the addition of more reads, there is not an increase in information. Therefore, this indicates that the dataset represents the totality of possible marks. 
 
-``mmplot`` gives an indication of the saturation point of the dataset, i.e. the proportion of marks present. The more complete a dataset is, the more accurate this will be. It also gives 
+.. image:: _static/img/goodcplt.jpg
+  :width: 50%
+  :alt: Good MM plot
 
 .. image:: _static/img/goodmmplt.jpg
+  :width: 50%
+  :alt: Good MM plot
+
+By contrast, in the plot here you can see that with each incremental increase in reads, there is an almost equivalent gain in information, with no indication of saturation. This therefore indicates that this dataset is incomplete.
+
+.. image:: _static/img/badcplt.jpg
   :width: 50%
   :alt: Bad MM plot
 
