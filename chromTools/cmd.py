@@ -10,7 +10,6 @@ import multiprocessing as mp
 import pathlib
 import shutil
 import sys
-import tempfile
 import time
 from subprocess import check_output
 
@@ -20,8 +19,8 @@ import mmh3
 import numpy as np
 import pandas as pd
 
-from chromTools.chmm_cmd import make_binary_data_from_bed, make_gridcontrol
-from chromTools.validate import assert_compressed, chmm_validator, macs_validator
+from chromTools.chmm_cmd import make_binary_data_from_bed, make_control_grid
+from chromTools.validate import assert_compressed, chmm_validator
 
 
 # ------------------------------------
@@ -29,7 +28,7 @@ from chromTools.validate import assert_compressed, chmm_validator, macs_validato
 # ------------------------------------
 def run(options):
     """
-    The main function pipeline for chromTools.
+    The main function pipeline for chromTools complete.
 
     :param options: Command line options.
     :type options: Namespace object.
@@ -246,6 +245,22 @@ def downsample(n, options, total):
 # --------------------------------------------------------------------------------#
 
 def use_chmm(n, gridcontrol, sumgridcontrol, bpresentcontrol, options):
+    """
+    Binarise the input data suing the ChromHMM binarisation algorithm.
+
+    :param n: File number.
+    :type n: int
+    :param gridcontrol: The control grid containing integer data values.
+    :type gridcontrol: numpy.ndarray
+    :param sumgridcontrol: The sum grid for storing the calculated sums.
+    :type sumgridcontrol: numpy.ndarray
+    :param bpresentcontrol: List of boolean values indicating presence of marks in the control data.
+    :type bpresentcontrol: list
+    :param options: Command-line options.
+    :type options: Namespace
+    :return: A tuple containing the file number (n) as a string and the ratio of count to total.
+    :rtype: tuple
+    """
     options = chmm_validator(options)
     count, total = make_binary_data_from_bed(
         n, gridcontrol, sumgridcontrol, bpresentcontrol, options
@@ -254,8 +269,16 @@ def use_chmm(n, gridcontrol, sumgridcontrol, bpresentcontrol, options):
 
 
 def chmm_gridcontrol(options):
+    """
+    Generate the CHMM control grid based on the provided options.
+
+    :param options: Command-line options.
+    :type options: Namespace
+    :return: Tuple containing the control grid, sum grid, and boolean list indicating presence of marks in control data.
+    :rtype: tuple
+    """
     options = chmm_validator(options)
-    gridcontrol, sumgridcontrol, bpresentcontrol = make_gridcontrol(options)
+    gridcontrol, sumgridcontrol, bpresentcontrol = make_control_grid(options)
     return gridcontrol, sumgridcontrol, bpresentcontrol
 
 

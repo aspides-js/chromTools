@@ -9,7 +9,6 @@ import math
 import os
 import pathlib
 import time
-import sys
 
 import numba as nb
 import numpy as np
