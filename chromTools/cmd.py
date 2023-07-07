@@ -28,10 +28,11 @@ from chromTools.validate import assert_compressed, chmm_validator, macs_validato
 # Main function
 # ------------------------------------
 def run(options):
-    """The Main function pipeline for chromTools
+    """
+    The main function pipeline for chromTools.
 
-    Args:
-            options (Namespace object): Command line options
+    :param options: Command line options.
+    :type options: Namespace object.
     """
     ## Concatenating
     cat_bed(options.files, options.control, options.subdir, options.info)
@@ -80,11 +81,8 @@ def run(options):
         r[res[0]].append(res[1])
     options.info(f"--- {(time.time() - start_time)} seconds ---")
 
-    print(r)
     param_write(r, options.outdir)
     param_plot(r, options.outdir)
-
-    print("Complete")
 
 
 # --------------------------------------------------------------------------------#
@@ -172,13 +170,13 @@ def wc(increment, subdir, info, warn, paired):
 
 
 def params(proportion):
-    """Calculate a value between a range to reflect proportion of reads kept
+    """
+    Calculate a value within a range to reflect the proportion of reads kept.
 
-    Args:
-            proportion (int): Proportion of reads to subsample from whole dataset
-
-    Returns:
-            maxHashValue (int): Threshold above which reads are discarded
+    :param proportion: Proportion of reads to subsample from the whole dataset.
+    :type proportion: int
+    :return: Maximum hash value threshold above which reads are discarded.
+    :rtype: int
     """
     max_size = sys.maxsize
     min_size = -sys.maxsize - 1
@@ -259,11 +257,15 @@ def chmm_gridcontrol(options):
 
 
 def param_write(r, outdir):
-    """Write the output to text file (tsv)
+    """
+    Write the output to a text file in TSV format.
 
-    Args:
-            r (dict): {Subsampled file : [<Number of reads>, <Proportion of genome bound>] }
-            outdir (str): Output directory
+    :param r: A dictionary of subsampled files and corresponding read and proportion values.
+    :type r: dict
+    :param outdir: The output directory.
+    :type outdir: str
+    :return: None
+    :rtype: None
     """
     with open(pathlib.Path(outdir / "completeness.txt"), "w") as f:
         for key, value in r.items():
@@ -271,11 +273,15 @@ def param_write(r, outdir):
 
 
 def param_plot(r, outdir):
-    """Plot the output to graph and call the Micheal-Menten function
+    """
+    Plot the output graph and call the Michaelis-Menten function.
 
-    Args:
-            r (dict): {Subsampled file : [<Number of reads>, <Proportion of genome bound>] }
-            outdir (str): Output directory
+    :param r: A dictionary of subsampled files and corresponding read and proportion values.
+    :type r: dict
+    :param outdir: The output directory.
+    :type outdir: str
+    :return: None
+    :rtype: None
     """
     df = pd.DataFrame(r)
     plt.figure(figsize=(10, 6), tight_layout=True)
@@ -291,10 +297,34 @@ def param_plot(r, outdir):
 
 
 def v(s, Vm, Km):
+    """
+    Calculate the reaction rate based on the substrate concentration.
+
+    :param s: The substrate concentration.
+    :type s: float
+    :param Vm: The maximum reaction rate.
+    :type Vm: float
+    :param Km: The Michaelis-Menten constant.
+    :type Km: float
+    :return: The reaction rate.
+    :rtype: float
+    """
     return (Vm * s) / (Km + s)
 
 
 def residuals(p, x, y):
+    """
+    Calculate the residuals between observed and predicted values by subtracting the predicted values (fi) from the observed values (y).
+
+    :param p: The parameter values.
+    :type p: dict
+    :param x: The independent variable values.
+    :type x: array-like
+    :param y: The observed values.
+    :type y: array-like
+    :return: The residuals.
+    :rtype: array-like
+    """
     Vm = p["Vm"]
     Km = p["Km"]
     fi = v(x, Vm, Km)
@@ -302,11 +332,15 @@ def residuals(p, x, y):
 
 
 def mm(df, outdir):
-    """Calculate the Michealis-Menten kinetics and plot to graph
+    """
+    Perform Michaelis-Menten analysis on the given data.
 
-    Args:
-            df (pandas dataframe): [<Subsampled file>] [<Number of reads>] [<Proportion of genome bound>]
-            outdir (str): Output directory
+    :param df: The input data as a DataFrame with two columns.
+    :type df: pandas.DataFrame
+    :param outdir: The directory path for saving the output files.
+    :type outdir: str
+    :return: None
+    :rtype: None
     """
     data = np.array(df)
 

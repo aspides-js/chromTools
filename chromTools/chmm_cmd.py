@@ -20,6 +20,19 @@ import numpy as np
 
 
 def make_gridcontrol(options):
+    """
+    Generate control grid and sum grid for binning control data.
+
+    This function initializes starting options, reads the chromosome length information file, loads the marks,
+    generates a control grid and sum grid, and loads control data into the grids.
+
+    :param options: The options for grid generation.
+    :type options: Namespace
+    :return: The control grid, sum grid, and presence flags for control marks.
+    :rtype: tuple[np.ndarray, np.ndarray, list[bool]]
+    :raises ValueError: Invalid line found in the chromosome length file if fewer than two columns are found.
+    """
+
     ## set starting options
     nbinsize = 200
     szcell = "control"
@@ -707,6 +720,23 @@ def determine_sumtags_numba(
     sumtags,
     ntotallocs,
 ):
+    """
+    Calculate the sum of tags for each mark in a specific chromosome.
+
+    This function calculates the sum of tags for each mark in a specific chromosome by iterating over the bins and
+    marks in the grid.
+
+    :param grid_nchrom: The grid for a specific chromosome.
+    :type grid_nchrom: np.ndarray
+    :param nummarks: The number of marks.
+    :type nummarks: int
+    :param sumtags: The array to store the sum of tags for each mark.
+    :type sumtags: np.ndarray
+    :param ntotallocs: The total number of locations.
+    :type ntotallocs: int
+    :return: The updated total number of locations and sum of tags for each mark.
+    :rtype: tuple[int, np.ndarray]
+    """
     for nbin in range(len(grid_nchrom)):
         for nmark in range(nummarks):
             sumtags[nmark] += grid_nchrom[nbin][nmark]
@@ -726,6 +756,34 @@ def determine_sumtags_ctrl_numba(
     sumtagscontrol,
     nchrom_nbin,
 ):
+    """
+    Calculate the sum of tags for marks and control marks in a specific chromosome.
+
+    This function calculates the sum of tags for marks and control marks in a specific chromosome by iterating over the
+    bins and marks in the grids. It updates the maximum control value, the control set, and the sum of tags for each
+    mark and control mark.
+
+    :param grid_nchrom: The grid for a specific chromosome.
+    :type grid_nchrom: np.ndarray
+    :param nummarks: The number of marks.
+    :type nummarks: int
+    :param sumtags: The array to store the sum of tags for each mark.
+    :type sumtags: np.ndarray
+    :param gridcontrol_nchrom: The control grid for a specific chromosome.
+    :type gridcontrol_nchrom: np.ndarray
+    :param numcontrolmarks: The number of control marks.
+    :type numcontrolmarks: int
+    :param maxcontrol: The array to store the maximum control value for each mark.
+    :type maxcontrol: np.ndarray
+    :param hscontrol: The set to store the control values.
+    :type hscontrol: list[set]
+    :param sumtagscontrol: The array to store the sum of control tags for each mark.
+    :type sumtagscontrol: np.ndarray
+    :param nchrom_nbin: The count of the bins in the chromosome.
+    :type nchrom_nbin: int
+    :return: The updated control set, sum of tags for marks, sum of control tags, maximum control values, and count of bins.
+    :rtype: tuple[list[set], np.ndarray, np.ndarray, np.ndarray, int]
+    """    
     for nbin in range(len(grid_nchrom)):
         nchrom_nbin += 1
         for nmark in range(nummarks):
@@ -740,6 +798,7 @@ def determine_sumtags_ctrl_numba(
             sumtags[nmark] += grid_nchrom[nbin][nmark]
             sumtagscontrol[nmark] += ncontrolval
     return hscontrol, sumtags, sumtagscontrol, maxcontrol, nchrom_nbin
+
 
 @nb.njit
 def window_sum_grid_numba(

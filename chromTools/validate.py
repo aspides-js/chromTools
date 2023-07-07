@@ -18,20 +18,16 @@ from chromTools.constants import GENOME as gnm
 # Misc function
 # ------------------------------------
 
-
 def args_validator(options):
-    """Validate command line arguments and set additional necessary parameters
-
-    Args:
-            options (Namespace object): Command line arguments
-
-    Raises:
-            FileNotFoundError: Paths to files, directories unaccessible
-
-    Returns:
-            options (Namespace object): Command line arguments
     """
+    Validate command line arguments and set additional necessary parameters.
 
+    :param options: Command line arguments.
+    :type options: Namespace object.
+    :raises FileNotFoundError: If paths to files or directories are inaccessible.
+    :return: Validated command line arguments.
+    :rtype: Namespace object.
+    """
     ## logging
     logging.basicConfig(
         level=20,
@@ -94,7 +90,7 @@ def args_validator(options):
             options.warn(
                 f"Output directories in {options.outdir} could not be accessed. Terminating program."
             )
-            sys.exit()
+            sys.exit(1)
     else:
         try:
             options.subdir.mkdir(parents=True, exist_ok=False)
@@ -103,7 +99,7 @@ def args_validator(options):
             options.warn(
                 f"Output directories in {options.outdir} could not be accessed or already exist. Please use --force-overwrite if you wish to overwrite output files. Terminating program."
             )
-            sys.exit()
+            sys.exit(1)
 
     ## seed
     if options.seed == None:
@@ -119,13 +115,13 @@ def args_validator(options):
 
 
 def assert_compressed(f):
-    """Test whether file is compressed (can be opened)
+    """
+    Test whether the file is compressed (can be opened).
 
-    Args:
-            f (str): Path to file
-
-    Returns:
-            bool: Boolean specifying whether file can be opened or not
+    :param f: Path to the file.
+    :type f: str
+    :return: Boolean specifying whether the file can be opened or not.
+    :rtype: bool
     """
     try:
         open(f, "r").readline()
@@ -134,114 +130,28 @@ def assert_compressed(f):
         return True
 
 
-def macs_validator(n, options):
-    """Set options for macs binarisation/peak calling
-
-    Args:
-            n (int): Numerical descriptor of file
-            options (Namespace object): Command line arguments
-
-    Returns:
-            options (Namespace object): Command line arguments
-    """
-
-    ## logging
-    logging.getLogger().setLevel(30)
-
-    options.error = logging.critical
-    options.warn = logging.warning
-    options.debug = logging.debug
-    options.info = logging.info
-
-    if len(str(n)) < 2:
-        nname = "0" + str(n)
-    else:
-        nname = str(n)
-
-    ## load_tag_files_options
-    options.tsize = False
-
-    ## load_frag_files_options
-    options.tfile = [f"{options.subdir}/downsampled.{n}.bed"]
-    options.name = f"P0{nname}"
-    options.cfile = False
-
-    if options.paired:
-        options.parser = BEDPEParser
-        options.nomodel = True
-    else:
-        options.parser = BEDParser
-
-    options.buffer_size = 100000  # macs default
-
-    ## peakdetect options
-    options.PE_MODE = options.paired
-    options.log_qvalue = 5e-2
-    options.log_pvalue = None
-    options.maxgap = False
-    options.minlen = False
-
-    if options.datatype == "atac":
-        options.parser = BEDParser
-        options.nomodel = False
-        options.shift = 100
-        options.extsize = 200
-        options.broad = True
-        options.broadcutoff = 5e-2
-    else:
-        options.shift = False
-        options.broad = False
-
-    options.nolambda = False
-    options.smalllocal = 1000
-    options.largelocal = 10000
-
-    ## call_peaks options
-    options.store_bdg = False
-    options.do_SPMR = False
-    options.cutoff_analysis = False
-    options.cutoff_analysis_file = "None"
-    options.call_summits = False
-    options.trackline = False
-
-    # output filenames
-    options.peakBed = os.path.join(
-        options.outdir, "2_binarised", options.name + "_peaks.bed"
-    )
-    options.bdg_treat = os.path.join(options.outdir, options.name + "_treat_pileup.bdg")
-    options.bdg_control = os.path.join(
-        options.outdir, options.name + "_control_lambda.bdg"
-    )
-
-    options.fecutoff = 1.0
-
-    return options
-
-
 def chmm_validator(options):
-    """Validates and configures the options for the ChromHMM binarisation.
+    """
+    Validate and configure the options for the ChromHMM binarization.
 
-    Args:
-            options (Namespace): An object containing the pipeline arguments.
-
-    Returns:
-            options (Namespace): The validated and configured options.
-
-    Configured Options:
-            - szchromlengthfile: The file containing the chromosome lengths (genome file).
-            - szoutputbinarydir: The directory to store the output binary files.
-            - szmarkdir: The subdirectory for mark-related files.
-            - szcontroldir: The subdirectory for control-related files.
-            - bpairend: A flag indicating whether the input data is paired-end (obtained from options.paired).
-            - nshift: The shift value (default: 100).
-            - noffsetleft: The amount to subtract from the left coordinate to make it 0-based inclusive (default: 0).
-            - noffsetright: The value to add to the right coordinate for 0-based, non-inclusive bed files (default: 1).
-            - npseudocountcontrol: An integer pseudocount added uniformly to each bin in the control data (default: 1).
-            - dpoissonthresh: The Poisson tail probability threshold (default: 0.0001).
-            - dfoldthresh: The fold threshold (default: 0).
-            - bcontainsthresh: A flag indicating the behavior of the Poisson cutoff (default: True).
-            - dcountthresh: The absolute signal threshold (default: 0).
-            - nflankwidthcontrol: The flank width for control data (default: 5).
+    :param options: An object containing the pipeline arguments.
+    :param szchromlengthfile: The file containing the chromosome lengths (genome file).
+    :param szoutputbinarydir: The directory to store the output binary files.
+    :param szmarkdir: The subdirectory for mark-related files.
+    :param szcontroldir: The subdirectory for control-related files.
+    :param bpairend: A flag indicating whether the input data is paired-end (obtained from options.paired).
+    :param nshift: The shift value (default: 100).
+    :param noffsetleft: The amount to subtract from the left coordinate to make it 0-based inclusive (default: 0).
+    :param noffsetright: The value to add to the right coordinate for 0-based, non-inclusive bed files (default: 1).
+    :param npseudocountcontrol: An integer pseudocount added uniformly to each bin in the control data (default: 1).
+    :param dpoissonthresh: The Poisson tail probability threshold (default: 0.0001).
+    :param dfoldthresh: The fold threshold (default: 0).
+    :param bcontainsthresh: A flag indicating the behavior of the Poisson cutoff (default: True).
+    :param dcountthresh: The absolute signal threshold (default: 0).
+    :param nflankwidthcontrol: The flank width for control data (default: 5).
+    :type options: Namespace
+    :return: The validated and configured options.
+    :rtype: Namespace
     """
     options.szchromlengthfile = options.genome
     options.szoutputbinarydir = options.bindir
