@@ -4,3 +4,5 @@ numpy
 mmh3
 matplotlib
 numba
+matplotlib
+pandas
