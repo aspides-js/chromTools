@@ -24,8 +24,6 @@ from chromTools.validate import args_validator
 # ------------------------------------
 # Main function
 # ------------------------------------
-
-
 def main():
     """
     The Main function/pipeline for chromTools.
@@ -43,13 +41,6 @@ def main():
         "--version", action="version", version="%(prog)s " + COMPLETE_VERSION
     )
 
-    argparser.add_argument(
-        "--datatype",
-        type=str,
-        dest="datatype",
-        default=False,
-        help="If atac has been specified, a different chromhmm command will be used",
-    )
 
     subparsers = argparser.add_subparsers(dest="subcommand", required=True)
 
@@ -122,7 +113,6 @@ def add_complete_parser(subparsers):
         action="store_true",
         help="Specify whether the input data is paired or unpaired. Default is FALSE",
     )
-    complete_parser.add_argument("--region", type=str, default="")
     complete_parser.add_argument(
         "--force-overwrite",
         dest="force",
@@ -130,7 +120,6 @@ def add_complete_parser(subparsers):
         action="store_true",
         help="If TRUE, files and directories in OUTDIR will be overwritten. Default is FALSE",
     )
-    complete_parser.add_argument("--tempdir", type=str, dest="tempdir", default=False)
     return
 
 
