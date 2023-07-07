@@ -198,6 +198,69 @@
 <section id="chromtools-complete">
 <h2>chromTools complete<a class="headerlink" href="#chromtools-complete" title="Permalink to this heading">#</a></h2>
 <dl class="py function">
+<dt class="sig sig-object py" id="chromTools.cmd.cat_bed">
+<span class="sig-prename descclassname"><span class="pre">chromTools.cmd.</span></span><span class="sig-name descname"><span class="pre">cat_bed</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">files</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">control</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">subdir</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">info</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/chromTools/cmd.html#cat_bed"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#chromTools.cmd.cat_bed" title="Permalink to this definition">#</a></dt>
+<dd><p>Concatenate compressed or uncompressed files into downsampled.0.bed.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>files</strong> (<em>str</em>) – Files to concatenate.</p></li>
+<li><p><strong>control</strong> (<em>str</em><em> or </em><em>None</em>) – Control files to concatenate.</p></li>
+<li><p><strong>subdir</strong> (<em>str</em>) – Path to the subsample directory.</p></li>
+<li><p><strong>info</strong> – Logging function for informational messages.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="chromTools.cmd.wc">
+<span class="sig-prename descclassname"><span class="pre">chromTools.cmd.</span></span><span class="sig-name descname"><span class="pre">wc</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">increment</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">subdir</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">info</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">warn</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">paired</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/chromTools/cmd.html#wc"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#chromTools.cmd.wc" title="Permalink to this definition">#</a></dt>
+<dd><p>Count total read number</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>increment</strong> (<em>int</em>) – The amount to increase each subsampled file by.</p></li>
+<li><p><strong>subdir</strong> (<em>str</em>) – Path to the subsample directory.</p></li>
+<li><p><strong>info</strong> – Logging function for informational messages.</p></li>
+<li><p><strong>warn</strong> – Logging function for warning messages.</p></li>
+<li><p><strong>paired</strong> (<em>bool</em>) – Indicates if the reads are paired end.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A tuple containing the total number of reads and the number of files that will be generated.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>tuple[int, int]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="chromTools.cmd.downsample">
+<span class="sig-prename descclassname"><span class="pre">chromTools.cmd.</span></span><span class="sig-name descname"><span class="pre">downsample</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">n</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">options</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">total</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/chromTools/cmd.html#downsample"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#chromTools.cmd.downsample" title="Permalink to this definition">#</a></dt>
+<dd><p>Downsample a bed file. For each read pair, a random value is assigned between the range.
+The proportion is used to calculate a maximum acceptable value within the range. Records
+whose value is below the limit are written to outfile, records whose hash value is above
+the limit are discarded.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>n</strong> (<em>int</em>) – Numerical descriptor of file</p></li>
+<li><p><strong>total</strong> (<em>int</em>) – Total number of reads/read pairs in downsampled.0.bed</p></li>
+<li><p><strong>options</strong> (<em>Namespace object</em>) – Command line arguments</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A tuple containing the numerical descriptor of file and the number of reads.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>tuple[str, float]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
 <dt class="sig sig-object py" id="chromTools.chmm_cmd.make_binary_data_from_bed">
 <span class="sig-prename descclassname"><span class="pre">chromTools.chmm_cmd.</span></span><span class="sig-name descname"><span class="pre">make_binary_data_from_bed</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">n</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">gridcontrol</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sumgridcontrol</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bpresentcontrol</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">options</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/chromTools/chmm_cmd.html#make_binary_data_from_bed"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#chromTools.chmm_cmd.make_binary_data_from_bed" title="Permalink to this definition">#</a></dt>
 <dd><p>Binarize BED data, both directly and with control.</p>
@@ -421,6 +484,9 @@ If False, it requires strictly greater.</p></li>
             <ul>
 <li><a class="reference internal" href="#">Internal Functions</a><ul>
 <li><a class="reference internal" href="#chromtools-complete">chromTools complete</a><ul>
+<li><a class="reference internal" href="#chromTools.cmd.cat_bed"><code class="docutils literal notranslate"><span class="pre">cat_bed()</span></code></a></li>
+<li><a class="reference internal" href="#chromTools.cmd.wc"><code class="docutils literal notranslate"><span class="pre">wc()</span></code></a></li>
+<li><a class="reference internal" href="#chromTools.cmd.downsample"><code class="docutils literal notranslate"><span class="pre">downsample()</span></code></a></li>
 <li><a class="reference internal" href="#chromTools.chmm_cmd.make_binary_data_from_bed"><code class="docutils literal notranslate"><span class="pre">make_binary_data_from_bed()</span></code></a></li>
 <li><a class="reference internal" href="#chromTools.chmm_cmd.load_grid"><code class="docutils literal notranslate"><span class="pre">load_grid()</span></code></a></li>
 <li><a class="reference internal" href="#chromTools.chmm_cmd.determine_mark_thresholds_from_binned_data_array"><code class="docutils literal notranslate"><span class="pre">determine_mark_thresholds_from_binned_data_array()</span></code></a></li>
