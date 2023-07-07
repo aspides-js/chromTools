@@ -20,7 +20,7 @@ import mmh3
 import numpy as np
 import pandas as pd
 
-from chromTools.chmm_cmd import make_binary_data_from_bed
+from chromTools.chmm_cmd import make_binary_data_from_bed, make_gridcontrol
 from chromTools.validate import assert_compressed, chmm_validator, macs_validator
 
 
@@ -39,9 +39,17 @@ def run(options):
         options.increment, options.subdir, options.info, options.warn, options.paired
     )
 
-    ## Downsampling
     start_time = time.time()
     options.start_time = start_time
+
+    if options.control:
+        options.info("Calculating control grid...")
+        gridcontrol, sumgridcontrol, bpresentcontrol = chmm_gridcontrol(options)
+    else:
+        gridcontrol, sumgridcontrol, bpresentcontrol = None, None, None
+    options.info(f"--- {(time.time() - start_time)} seconds ---")
+
+    ## Downsampling
     options.info("Downsampling...")
     options.info(f"CPU number: {str(mp.cpu_count())}")
 
@@ -54,15 +62,19 @@ def run(options):
     for res in pool.starmap(downsample, args):
         r.setdefault(res[0], [])
         r[res[0]].append(res[1])
-        options.info(f"--- {(time.time() - start_time)} seconds ---")
+    options.info(f"--- {(time.time() - start_time)} seconds ---")
 
-    print(r)
+    # nfile = 1
+
     ## Binarising
-    options.info("CHMM binarising...")
+    options.info("Binarising...")
     args = [
-        (n, options) for n in range(0, nfile)
+        (n, gridcontrol, sumgridcontrol, bpresentcontrol, options)
+        for n in range(0, nfile)
     ]  # nfile should be number calculated by wc()
+    print(time.time() - start_time)
     r["0"] = [total]
+    print(f"args len is: {len(args)}")
     for res in pool.starmap(use_chmm, args):
         r.setdefault(res[0], [])
         r[res[0]].append(res[1])
@@ -229,105 +241,18 @@ def downsample(n, options, total):
 
 # --------------------------------------------------------------------------------#
 
-
-def use_macs(n, options):
-    """Uses macs3 peak calling functionality to identify areas in the genome that
-    have been enriched with aligned reads.
-
-    Args:
-            n (int): Numerical descriptor of file
-            options (Namespace object): Command line arguments
-
-    Returns:
-            n (int): Numerical descriptor of file
-            (int): Sum of counted peaks / total chromosome length
-    """
-    options = macs_validator(n, options)
-
-    # if set by user, use alternative tempdir
-    if options.tempdir:
-        tempfile.tempdir = options.tempdir
-
-    if options.paired:
-        (treat, control) = load_frag_files_options(options)
-    else:
-        (treat, control) = load_tag_files_options(options)
-
-    t0 = treat.total
-    t1 = t0
-    options.d = options.tsize
-
-    peakdetect = PeakDetect(treat=treat, control=control, opt=options)
-
-    peakdetect.call_peaks()
-
-    # filter out low fe peaks
-    # peakdetect.peaks.filter_fc( fc_low = options.fecutoff )
-
-    ofhd_bed = open(options.peakBed, "w")
-    peakdetect.peaks.write_to_narrowPeak(
-        ofhd_bed,
-        name_prefix=b"%s_peak_",
-        name=options.name.encode(),
-        score_column="qscore",
-        trackline=False,
-    )
-    ofhd_bed.close()
-
-    return str(n), count_peakmark(options)
-
-
-def count_peakmark(options):
-    """Count the number of base pairs overlapping peaks per chromosome
-
-    Args:
-            options (Namespace object): Command line arguments
-
-    Returns:
-            (int): Sum of counted peaks / total chromosome length
-    """
-    g = chr_len(options.genome)
-    with open(options.peakBed, "r") as f:
-        for line in f:
-            chrom = line.split("\t")[0]
-            num = int(line.split("\t")[2]) - int(line.split("\t")[1])
-            g[chrom].append(num)
-
-    if 0 in [sum(x[1:]) for x in g.values()]:
-        options.warn(
-            "0 values in chromosome(s) peak count may indicate incorrect chromosome length file."
-        )
-
-    return (sum([sum(x[1:]) for x in g.values()])) / (
-        sum([x[0] for x in g.values()])
-    )  # sum of counted peaks / total chromosome length
-
-
-def chr_len(genome):
-    """Generate dictionary from genome chromosome length files
-
-    Args:
-            genome (str): Path to genome chromosome length file
-
-    Returns:
-            g (dict): {CHR number : length}
-    """
-    g = {}
-    with open(genome) as f:
-        for line in f:
-            (key, val) = line.split()
-            g.setdefault(key, [])
-            g[key].append(int(val))
-    return g
-
-
-# --------------------------------------------------------------------------------#
-
-
-def use_chmm(n, options):
+def use_chmm(n, gridcontrol, sumgridcontrol, bpresentcontrol, options):
     options = chmm_validator(options)
-    count, total = make_binary_data_from_bed(n, options)
+    count, total = make_binary_data_from_bed(
+        n, gridcontrol, sumgridcontrol, bpresentcontrol, options
+    )
     return str(n), count / total
+
+
+def chmm_gridcontrol(options):
+    options = chmm_validator(options)
+    gridcontrol, sumgridcontrol, bpresentcontrol = make_gridcontrol(options)
+    return gridcontrol, sumgridcontrol, bpresentcontrol
 
 
 # --------------------------------------------------------------------------------#
@@ -354,7 +279,7 @@ def param_plot(r, outdir):
     """
     df = pd.DataFrame(r)
     plt.figure(figsize=(10, 6), tight_layout=True)
-    plt.plot(df.loc[0].tolist(), df.loc[1].tolist(), "s-", color = "#06846a")
+    plt.plot(df.loc[0].tolist(), df.loc[1].tolist(), "s-", color="#06846a")
     plt.xlabel("Number of Reads")
     plt.ylabel("Proportion of marks")
     plt.savefig(pathlib.Path(outdir / "completeplot.jpg"))
@@ -397,9 +322,9 @@ def mm(df, outdir):
     plt.plot(fm, v(fm, result.params["Vm"].value, result.params["Km"].value), "k")
     plt.xlabel("[S] (reads)")
     plt.ylabel("v (proportion)")
-    plt.axhline(y=result.params["Vm"].value, linestyle="-", color = "#06846a")
+    plt.axhline(y=result.params["Vm"].value, linestyle="-", color="#06846a")
     if result.params["Km"].value < max(data[0]):
-        plt.axvline(x=result.params["Km"].value, linestyle="-", color = "#06846a")
+        plt.axvline(x=result.params["Km"].value, linestyle="-", color="#06846a")
 
     plt.title(label=f'Vm: {result.params["Vm"].value}')
     plt.savefig(pathlib.Path(outdir / "mmplot.jpg"))
