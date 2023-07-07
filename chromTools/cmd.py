@@ -163,6 +163,12 @@ def wc(increment, subdir, info, warn, paired):
         )
         sys.exit(1)
 
+    if total < increment:
+        warn(
+                f"Increment is larger than whole dataset read number. Terminating."
+            )
+        sys.exit(1)
+
     return total, nfile
 
 
