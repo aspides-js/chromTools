@@ -3,3 +3,4 @@ lmfit
 numpy
 mmh3
 matplotlib
+numba
