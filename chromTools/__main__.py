@@ -10,7 +10,7 @@ the distribution).
 """
 
 # ------------------------------------
-# modules
+# Modules
 # ------------------------------------
 
 import argparse as ap
@@ -27,7 +27,7 @@ from chromTools.validate import args_validator
 def main():
     """
     The Main function/pipeline for chromTools.
-    
+
     """
 
     description = (
@@ -40,7 +40,6 @@ def main():
     argparser.add_argument(
         "--version", action="version", version="%(prog)s " + COMPLETE_VERSION
     )
-
 
     subparsers = argparser.add_subparsers(dest="subcommand", required=True)
 
@@ -94,7 +93,13 @@ def add_complete_parser(subparsers):
         default="",
         help="Directory where output files are written to. If unspecified files will be written to the current working directory",
     )
-    complete_parser.add_argument("-g", "--genome", type=str, default="hg38", help="Path to chromosome and chromosome length file. Genome assemblies hg18, hg19, hg38, mm9, mm10, rn5, rn6, danRer7, danRer10, dm3, dm6, ce6, and ce10 can be accessed with their genome assembly name",)
+    complete_parser.add_argument(
+        "-g",
+        "--genome",
+        type=str,
+        default="hg38",
+        help="Path to chromosome and chromosome length file. Genome assemblies hg18, hg19, hg38, mm9, mm10, rn5, rn6, danRer7, danRer10, dm3, dm6, ce6, and ce10 can be accessed with their genome assembly name",
+    )
     complete_parser.add_argument(
         "--gsize",
         default=False,
