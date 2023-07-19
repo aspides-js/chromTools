@@ -1,8 +1,14 @@
 # pyproject.toml
 
 [build-system]
-requires      = ["setuptools>=58.0.0", "wheel", "pip>=23.0.1", "Cython", "numpy"]
+requires      = ["setuptools>=58.0.0", "wheel", "pip>=23.0.1", "Cython", "numpy>=1.21.6"]
 build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+py-modules = ["c_build"]
+
+[tool.setuptools.cmdclass]
+build_py = "c_build.build_py"
 
 [project]
 name = "chromTools"
@@ -26,19 +32,13 @@ dependencies = [
     "mmh3>=3.0.0", 
     "numpy>=1.21.6",
     "lmfit", 
-    "matplotlib>=3.5.3"
+    "matplotlib>=3.5.3", 
+    "numba"
 ]
 requires-python = ">=3.7"
 
 [project.optional-dependencies]
 dev = ["pytest", "cli-test-helpers"]
-
-[tool.setuptools]
-py-modules = ["_custom_build"]
-
-[tool.setuptools.cmdclass]
-build_py = "_custom_build.build_py"
-
 
 [project.urls]
 Homepage = "https://github.com/aspides-js/chromTools"
