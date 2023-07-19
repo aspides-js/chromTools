@@ -1,7 +1,7 @@
 #!/usr/bin/python
 
 # ------------------------------------
-# modules
+# Modules
 # ------------------------------------
 
 import errno
@@ -13,10 +13,10 @@ from pathlib import Path
 
 from chromTools.constants import GENOME as gnm
 
-
 # ------------------------------------
 # Misc function
 # ------------------------------------
+
 
 def args_validator(options):
     """
@@ -128,6 +128,9 @@ def assert_compressed(f):
         return False
     except:
         return True
+
+
+# -----------------------------------------------------------------------------------#
 
 
 def chmm_validator(options):

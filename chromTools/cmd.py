@@ -2,7 +2,7 @@
 
 
 # ------------------------------------
-# modules
+# Modules
 # ------------------------------------
 
 import gzip as gz
@@ -41,12 +41,6 @@ def run(options):
 
     start_time = time.time()
     options.start_time = start_time
-
-    if options.control:
-        options.info("Calculating control grid...")
-        gridcontrol, sumgridcontrol, bpresentcontrol = chmm_gridcontrol(options)
-    else:
-        gridcontrol, sumgridcontrol, bpresentcontrol = None, None, None
     options.info(f"--- {(time.time() - start_time)} seconds ---")
 
     ## Downsampling
@@ -64,12 +58,10 @@ def run(options):
         r[res[0]].append(res[1])
     options.info(f"--- {(time.time() - start_time)} seconds ---")
 
-    # nfile = 1
-
     ## Binarising
     options.info("Binarising...")
     args = [
-        (n, gridcontrol, sumgridcontrol, bpresentcontrol, options)
+        (n, options)  # gridcontrol, sumgridcontrol, bpresentcontrol,
         for n in range(0, nfile)
     ]  # nfile should be number calculated by wc()
     print(time.time() - start_time)
@@ -79,6 +71,8 @@ def run(options):
         r.setdefault(res[0], [])
         r[res[0]].append(res[1])
     options.info(f"--- {(time.time() - start_time)} seconds ---")
+
+    pool.close()
 
     param_write(r, options.outdir)
     param_plot(r, options.outdir)
@@ -163,9 +157,7 @@ def wc(increment, subdir, info, warn, paired):
         sys.exit(1)
 
     if total < increment:
-        warn(
-                f"Increment is larger than whole dataset read number. Terminating."
-            )
+        warn(f"Increment is larger than whole dataset read number. Terminating.")
         sys.exit(1)
 
     return total, nfile
@@ -244,7 +236,8 @@ def downsample(n, options, total):
 
 # --------------------------------------------------------------------------------#
 
-def use_chmm(n, gridcontrol, sumgridcontrol, bpresentcontrol, options):
+
+def use_chmm(n, options):  # gridcontrol, sumgridcontrol, bpresentcontrol,
     """
     Binarise the input data suing the ChromHMM binarisation algorithm.
 
@@ -263,8 +256,8 @@ def use_chmm(n, gridcontrol, sumgridcontrol, bpresentcontrol, options):
     """
     options = chmm_validator(options)
     count, total = make_binary_data_from_bed(
-        n, gridcontrol, sumgridcontrol, bpresentcontrol, options
-    )
+        n, options
+    )  # gridcontrol, sumgridcontrol, bpresentcontrol,
     return str(n), count / total
 
 
