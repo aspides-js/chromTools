@@ -93,12 +93,10 @@ def make_binary_data_from_bed(
     if not options.control:
         hscellnocontrol = hscells
         hscellcontrol = None
-        bcontrol = False
     else:
         hscellcontrol = hscells
         hscellnocontrol = set()
         hmfilescontrol = {f"{szcell}\t{szmark}": ["downsampled.ctrl.bed"]}
-        bcontrol = True
 
     ## reads in the chromosome length information file
     # the first column of this file is the chromosome and the second is the chromsome length
@@ -108,17 +106,18 @@ def make_binary_data_from_bed(
         lengths = []  # stores the chromosome length
         hmchrom = {}  # stores a mapping of chromosome to chromosome index
         for szLine in allines:
-            st = szLine.strip().split()
-            if len(st) < 2:
+            szLine = szLine.strip().split()
+            if len(szLine) < 2:
                 raise ValueError(f"Invalid line found in {options.szchromlengthfile}")
-            chrom = st[0]
-            length = int(st[1])
+            chrom = szLine[0]
+            length = int(szLine[1])
             chroms.append(chrom)
             hmchrom[chrom] = len(chroms) - 1
             lengths.append(length)
 
     ## encode to bytes for cython
-    hmchrom = {y.encode("utf-8"): hmchrom.get(y) for y in hmchrom.keys()}
+    chmchrom = {y.encode("utf-8"): hmchrom.get(y) for y in hmchrom.keys()}
+    lenchroms = len(chroms)
 
     # loads all the marks in hsmarks into the array marks and then sorts it
     nummarks = len(hsmarks)
@@ -127,25 +126,22 @@ def make_binary_data_from_bed(
     marks.sort()
 
     # generates a three dimensional array with each chromosome, the lengths of each chr divided by binsize, and the number of marks (always 1 in complete)
-    cgrid = np.zeros((len(chroms), lengths[0] // nbinsize, nummarks), dtype=int)
+    cgrid = np.zeros((lenchroms, lengths[0] // nbinsize, nummarks), dtype=int)
     bpresentmarks = [False] * nummarks
 
     # generates a three dimensional array with each chromosome, the lengths of each chr divided by binsize, and the number of marks (always 1 in complete)
-    if bcontrol:
-        cgridcontrol = np.ones(
-            (len(chroms), lengths[0] // nbinsize, nummarks), dtype=int
-        )
-        gridcontrol = np.empty((len(chroms),), dtype=np.ndarray)
-        sumgridcontrol = np.empty((len(chroms),), dtype=np.ndarray)
-        bpresentcontrol = [False] * len(chroms)
+    if options.control:
+        cgridcontrol = np.ones((lenchroms, lengths[0] // nbinsize, nummarks), dtype=int)
+        gridcontrol = np.empty((lenchroms,), dtype=np.ndarray)
+        sumgridcontrol = np.empty((lenchroms,), dtype=np.ndarray)
+        bpresentcontrol = [False] * lenchroms
         bpresentmarkscontrol = [False] * nummarks
 
     # ----------------------------------------
 
     for szcell in hscells:
-        bpresent = [False] * len(chroms)
+        bpresent = [False] * lenchroms
         # going through each declared cell type
-        # hscellcontrol = hmfilescellcontrol.get(szcell)
         bmissing = szcell in hscellnocontrol
         if hscellcontrol is None:
             # no control data for this cell type
@@ -162,7 +158,7 @@ def make_binary_data_from_bed(
         # loading data for the cell type
         print(time.time() - start_time)
         print("LOAD GRID")
-        cgrid, bpresent, bpresentmarks = load_grid(
+        cgrid, bpresent, bpresentmarks = cload_grid(
             cgrid,
             bpresent,
             bpresentmarks,
@@ -174,25 +170,18 @@ def make_binary_data_from_bed(
             hmfiles,
             szcell,
             options.szmarkdir,
-            hmchrom,
+            chmchrom,
             0,
-            bcontrol,
+            options.control,
         )
         # once it comes out of load_grid return cgrid to correct size
-        grid = np.empty((len(chroms),), dtype=np.ndarray)
+        grid = np.empty((lenchroms,), dtype=np.ndarray)
         for ni in range(len(chroms)):
-            grid[ni] = cgrid[ni][0 : lengths[ni] // nbinsize]
-
-        print(time.time() - start_time)
+            grid[ni] = cgrid[ni][0 : (lengths[ni] // nbinsize)]
+        # ensure bpresent is list of bools
+        bpresent = list(map(bool, bpresent))
 
         if bcontrolfile:
-            # if cgridcontrol[0] is None or len(cgridcontrol[0][0]) != numcontrolmarks:
-            # reallocate if changing array size
-            # allowed to go between single and matched
-            for ni in range(len(chroms)):
-                sumgridcontrol[ni] = np.zeros(
-                    (lengths[ni] // nbinsize, numcontrolmarks), dtype=int
-                )
             # we have control data loading cell type data for that
             print("LOAD GRID CONTROL")
             cgridcontrol, bpresentcontrol, bpresentmarkscontrol = load_grid(
@@ -209,16 +198,16 @@ def make_binary_data_from_bed(
                 options.szcontroldir,
                 hmchrom,
                 options.npseudocountcontrol,
-                bcontrol,
+                options.control,
             )
             # once it comes out of load_grid return cgridcontrol to correct size
             for ni in range(len(chroms)):
                 gridcontrol[ni] = np.asarray(
                     cgridcontrol[ni][0 : lengths[ni] // nbinsize]
                 )
-
-            print(type(gridcontrol[0]))
-            print(type(cgridcontrol[0]))
+                sumgridcontrol[ni] = np.zeros(
+                    (lengths[ni] // nbinsize, numcontrolmarks), dtype=int
+                )
 
             print(time.time() - start_time)
     nummarks_m1 = nummarks - 1
@@ -353,7 +342,7 @@ def make_binary_data_from_bed(
 # --------------------------------------
 
 
-def load_grid(
+def cload_grid(
     grid,
     bpresent,
     bpresentmarks,
@@ -400,7 +389,7 @@ def load_grid(
     :type hmchrom: dict
     :param ninitval: The value that the data should be initialized to.
     :type ninitval: int
-    :param bcontrol: if True, data is control dataz
+    :param bcontrol: if True, data is control data
     :type bcontrol: bool
 
     :return: grid (numpy.ndarray): The updated grid with the read counts.
@@ -462,6 +451,72 @@ def load_grid(
                     grid,
                     bpresent,
                 )
+    print(grid.ndim)
+    return grid, bpresent, bpresentmarks
+
+
+def load_grid(
+    grid,
+    bpresent,
+    bpresentmarks,
+    marks,
+    nshift,
+    nbinsize,
+    noffsetleft,
+    noffsetright,
+    hmfiles,
+    szcell,
+    szmarkdir,
+    hmchrom,
+    ninitval,
+    bcontrol,
+):
+    nummarks = len(grid[0][0])
+    nchromcol, nbegincol, nendcol, nstrandcol, nmaxindex = 0, 1, 2, -1, -1
+    for nmark in range(nummarks):
+        alfiles = hmfiles.get(f"{szcell}\t{marks[nmark]}")
+        if alfiles is None:
+            if bcontrol:
+                print(
+                    f"Warning did not find control data for {szcell} {marks[nmark]} treating as missing"
+                )
+            else:
+                print(
+                    f"Warning did not find data for {szcell} {marks[nmark]} treating as missing"
+                )
+
+            bpresentmarks[nmark] = False
+            if not bcontrol:
+                # slight efficiency improvement here in v1.04
+                for nchrom in range(len(grid)):
+                    numbins = len(grid[nchrom])
+                    for nbin in range(numbins):
+                        grid[nchrom][nbin][nmark] = -1
+        else:
+            bpresentmarks[nmark] = True
+            for nfile in range(len(alfiles)):
+                szfile = alfiles[nfile]
+                with open(os.path.join(szmarkdir, szfile), "r") as brbed:
+                    for szLine in brbed:
+                        szLineA = szLine.split()
+                        szchrom = szLineA[nchromcol]
+                        objInt = hmchrom.get(szchrom)
+                        if objInt is not None:
+                            nchrom = objInt
+                            szstrand = szLineA[nstrandcol]
+                            if szstrand == "+":
+                                nbin = (
+                                    int(szLineA[nbegincol]) - noffsetleft + nshift
+                                ) // nbinsize
+                            elif szstrand == "-":
+                                nbin = (
+                                    int(szLineA[nendcol]) - noffsetright - nshift
+                                ) // nbinsize
+                            else:
+                                raise ValueError(f"{szstrand} is an invalid strand!")
+                            if nbin >= 0 and nbin < len(grid[nchrom]):
+                                grid[nchrom][nbin][nmark] += 1
+                                bpresent[nchrom] = True
     return grid, bpresent, bpresentmarks
 
 
@@ -509,13 +564,13 @@ def determine_mark_thresholds_from_binned_data_array(
 
     for nchrom in range(len(grid)):
         if bpresent[nchrom]:
-            grid_nchrom = grid[nchrom]
-            ntotallocs, sumtags = determine_sumtags_numba(
-                grid_nchrom,
-                nummarks,
-                sumtags,
-                ntotallocs,
-            )
+            sumtags[0] += np.sum(
+                grid[nchrom]
+            )  ## would need to be adapted if nummarks > 1
+            ntotallocs += len(grid[nchrom])
+
+    print(f"sumtags is {sumtags}")
+    print(f"ntotallocs is {ntotallocs}")
     for nj in range(len(sumtags)):
         dlambda = sumtags[nj] / ntotallocs
         dcum, nthresh, dlogfactorial = 0, 0, 0
@@ -588,37 +643,27 @@ def determine_mark_thresholds_from_binned_data_array_against_control(
     sumtagscontrol = np.array([0] * nummarks)
     thresholds = [0] * nummarks
     maxcontrol = np.array([0] * nummarks)
-    x = 0
-    for nchrom in range(len(grid)):
-        x += len(grid[nchrom])
 
-    hscontrol_np = np.empty([len(range(nummarks)), x], dtype=int)
-
-    x = -1
+    hscontrol_np = np.empty(0, dtype=int)
+    new_time = time.time()
     for nchrom in range(len(grid)):
         if bpresent[nchrom] and bpresentcontrol[nchrom]:
-            grid_nchrom = grid[nchrom]
-            gridcontrol_nchrom = gridcontrol[nchrom]
-            (
-                hscontrol_np,
-                sumtags,
-                sumtagscontrol,
-                maxcontrol,
-                x,
-            ) = determine_sumtags_ctrl_numba(
-                grid_nchrom,
-                nummarks,
-                sumtags,
-                gridcontrol_nchrom,
-                numcontrolmarks,
-                maxcontrol,
-                hscontrol_np,
-                sumtagscontrol,
-                x,
+            sumtags[0] += np.sum(grid[nchrom])
+            sumtagscontrol[0] += np.sum(gridcontrol[nchrom])
+            hscontrol_np = np.concatenate(
+                (hscontrol_np, gridcontrol[nchrom]), axis=None
             )
+            hscontrol_np = np.unique(hscontrol_np)
+            maxcontrol[0] = max(hscontrol_np)
+            # --------------
     hscontrol = []
-    for i in hscontrol_np:
-        hscontrol.append(set(i))
+    hscontrol.append(set(hscontrol_np))
+    print(f"sumtgas is {sumtags}")
+    print(f"sumtgascontrol is {sumtagscontrol}")
+    print(f"hcontrol is {hscontrol}")
+    print(f"maxcontrol is: {maxcontrol}")
+    print("TIME IS:")
+    print(time.time() - new_time)
 
     for nmark in range(len(sumtags)):
         thresholds[nmark] = [0] * (maxcontrol[nmark] + 1)
@@ -644,94 +689,8 @@ def determine_mark_thresholds_from_binned_data_array_against_control(
                 thresholds[nmark][nbackground] = max(
                     int(dfoldthresh * dlambda), nthresh, int(dcountthresh)
                 )
+
     return thresholds
-
-
-@nb.njit
-def determine_sumtags_numba(
-    grid_nchrom,
-    nummarks,
-    sumtags,
-    ntotallocs,
-):
-    """
-    Calculate the sum of tags for each mark in a specific chromosome.
-
-    This function calculates the sum of tags for each mark in a specific chromosome by iterating over the bins and
-    marks in the grid.
-
-    :param grid_nchrom: The grid for a specific chromosome.
-    :type grid_nchrom: np.ndarray
-    :param nummarks: The number of marks.
-    :type nummarks: int
-    :param sumtags: The array to store the sum of tags for each mark.
-    :type sumtags: np.ndarray
-    :param ntotallocs: The total number of locations.
-    :type ntotallocs: int
-    :return: The updated total number of locations and sum of tags for each mark.
-    :rtype: tuple[int, np.ndarray]
-    """
-    for nbin in range(len(grid_nchrom)):
-        for nmark in range(nummarks):
-            sumtags[nmark] += grid_nchrom[nbin][nmark]
-    ntotallocs += len(grid_nchrom)
-    return ntotallocs, sumtags
-
-
-@nb.njit
-def determine_sumtags_ctrl_numba(
-    grid_nchrom,
-    nummarks,
-    sumtags,
-    gridcontrol_nchrom,
-    numcontrolmarks,
-    maxcontrol,
-    hscontrol,
-    sumtagscontrol,
-    nchrom_nbin,
-):
-    """
-    Calculate the sum of tags for marks and control marks in a specific chromosome.
-
-    This function calculates the sum of tags for marks and control marks in a specific chromosome by iterating over the
-    bins and marks in the grids. It updates the maximum control value, the control set, and the sum of tags for each
-    mark and control mark.
-
-    :param grid_nchrom: The grid for a specific chromosome.
-    :type grid_nchrom: np.ndarray
-    :param nummarks: The number of marks.
-    :type nummarks: int
-    :param sumtags: The array to store the sum of tags for each mark.
-    :type sumtags: np.ndarray
-    :param gridcontrol_nchrom: The control grid for a specific chromosome.
-    :type gridcontrol_nchrom: np.ndarray
-    :param numcontrolmarks: The number of control marks.
-    :type numcontrolmarks: int
-    :param maxcontrol: The array to store the maximum control value for each mark.
-    :type maxcontrol: np.ndarray
-    :param hscontrol: The set to store the control values.
-    :type hscontrol: list[set]
-    :param sumtagscontrol: The array to store the sum of control tags for each mark.
-    :type sumtagscontrol: np.ndarray
-    :param nchrom_nbin: The count of the bins in the chromosome.
-    :type nchrom_nbin: int
-    :return: The updated control set, sum of tags for marks, sum of control tags, maximum control values, and count of bins.
-    :rtype: tuple[list[set], np.ndarray, np.ndarray, np.ndarray, int]
-    """
-    for nbin in range(len(grid_nchrom)):
-        nchrom_nbin += 1
-        for nmark in range(nummarks):
-            # int nval = grid_nchrom_nbin[nmark];
-            if numcontrolmarks == 1:
-                ncontrolval = gridcontrol_nchrom[nbin][0]
-            else:
-                ncontrolval = gridcontrol_nchrom[nbin][nmark]
-            if ncontrolval > maxcontrol[nmark]:
-                maxcontrol[nmark] = ncontrolval
-            hscontrol[nmark][nchrom_nbin] = ncontrolval
-            sumtags[nmark] += grid_nchrom[nbin][nmark]
-            sumtagscontrol[nmark] += ncontrolval
-    return hscontrol, sumtags, sumtagscontrol, maxcontrol, nchrom_nbin
 
 
 @nb.njit

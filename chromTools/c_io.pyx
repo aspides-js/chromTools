@@ -27,7 +27,7 @@ def read_to_grid(file_path,
         int nshift, 
         int nmark,
         int nbinsize, 
-        np.ndarray[np.int32_t, ndim=3] grid, 
+        np.ndarray[np.int64_t, ndim=3] grid, 
         list bpresent):
     cdef char* szchrom
     cdef char* szstrand
