@@ -53,7 +53,7 @@ def run(options):
     ]  # nfile should be number calculated by wc()
 
     r = {}  # initiate empty dictionary
-    for res in pool.starmap(downsample, args):
+    for res in pool.starmap(subsample, args):
         r.setdefault(res[0], [])
         r[res[0]].append(res[1])
     options.info(f"--- {(time.time() - start_time)} seconds ---")
@@ -83,7 +83,7 @@ def run(options):
 
 def cat_bed(files, control, subdir, info):
     """
-    Concatenate compressed or uncompressed files into downsampled.0.bed.
+    Concatenate compressed or uncompressed files into subsampled.0.bed.
 
     :param files: Files to concatenate.
     :type files: str
@@ -96,7 +96,7 @@ def cat_bed(files, control, subdir, info):
     """
     info("Concatenating files...")
     start_time = time.time()
-    with open(pathlib.Path(subdir / "downsampled.0.bed"), "wb") as wfd:
+    with open(pathlib.Path(subdir / "subsampled.0.bed"), "wb") as wfd:
         for f in files:
             if assert_compressed(f):
                 print("File is compressed")
@@ -106,7 +106,7 @@ def cat_bed(files, control, subdir, info):
                 with open(f, "rb") as fd:
                     shutil.copyfileobj(fd, wfd)
     if control != False:
-        with open(pathlib.Path(subdir / "downsampled.ctrl.bed"), "wb") as wfd:
+        with open(pathlib.Path(subdir / "subsampled.ctrl.bed"), "wb") as wfd:
             for f in control:
                 if assert_compressed(f):
                     print("File is compressed")
@@ -136,7 +136,7 @@ def wc(increment, subdir, info, warn, paired):
 
     """
     info("Calculating total read number...")
-    total = int(check_output(["wc", "-l", f"{subdir}/downsampled.0.bed"]).split()[0])
+    total = int(check_output(["wc", "-l", f"{subdir}/subsampled.0.bed"]).split()[0])
 
     if paired:
         total = total / 2
@@ -145,7 +145,7 @@ def wc(increment, subdir, info, warn, paired):
 
     # give warning if nfile is very high
     if nfile > 100:
-        warn(f"Number of downsampled files will be {nfile}")
+        warn(f"Number of subsampled files will be {nfile}")
 
     if total == 0:
         warn(
@@ -193,19 +193,25 @@ def discard(maxHashValue, seed, line):
     readname = line.split("\t")[3].rsplit("/")[
         0
     ]  # extract readname, remove everything after '/' (read pair if paired)
+
+    if len(readname) < 2:
+        raise ValueError(
+            f"Readname length is {len(readname)}! Check fourth column of input files contains a valid readname."
+        )
+
     hashInt = mmh3.hash64(readname, seed)
     return hashInt[0] > maxHashValue
 
 
-def downsample(n, options, total):
-    """Downsample a bed file. For each read pair, a random value is assigned between the range.
+def subsample(n, options, total):
+    """Subsample a bed file. For each read pair, a random value is assigned between the range.
     The proportion is used to calculate a maximum acceptable value within the range. Records
     whose value is below the limit are written to outfile, records whose hash value is above
     the limit are discarded.
 
     :param n: Numerical descriptor of file
     :type n: int
-    :param total: Total number of reads/read pairs in downsampled.0.bed
+    :param total: Total number of reads/read pairs in subsampled.0.bed
     :type total: int
     :param options: Command line arguments
     :type options: Namespace object
@@ -215,11 +221,11 @@ def downsample(n, options, total):
 
     """
     proportion = (options.increment * n) / total
-    outfile = pathlib.Path(options.subdir / f"downsampled.{n}.bed")
+    outfile = pathlib.Path(options.subdir / f"subsampled.{n}.bed")
     reads = 0
     a = params(proportion)
     with open(outfile, "w") as outf:
-        with open(pathlib.Path(options.subdir / "downsampled.0.bed"), "r") as f:
+        with open(pathlib.Path(options.subdir / "subsampled.0.bed"), "r") as f:
             for line in f:
                 if discard(a, options.seed, line):
                     continue

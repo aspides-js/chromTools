@@ -88,7 +88,7 @@ def make_binary_data_from_bed(
     szmark = "mark"
     hscells = set([szcell])
     hsmarks = set([szmark])
-    hmfiles = {f"{szcell}\t{szmark}": [f"downsampled.{n}.bed"]}
+    hmfiles = {f"{szcell}\t{szmark}": [f"subsampled.{n}.bed"]}
 
     if not options.control:
         hscellnocontrol = hscells
@@ -96,7 +96,7 @@ def make_binary_data_from_bed(
     else:
         hscellcontrol = hscells
         hscellnocontrol = set()
-        hmfilescontrol = {f"{szcell}\t{szmark}": ["downsampled.ctrl.bed"]}
+        hmfilescontrol = {f"{szcell}\t{szmark}": ["subsampled.ctrl.bed"]}
 
     ## reads in the chromosome length information file
     # the first column of this file is the chromosome and the second is the chromsome length
@@ -176,7 +176,7 @@ def make_binary_data_from_bed(
         )
         # once it comes out of load_grid return cgrid to correct size
         grid = np.empty((lenchroms,), dtype=np.ndarray)
-        for ni in range(len(chroms)):
+        for ni in range(lenchroms):
             grid[ni] = cgrid[ni][0 : (lengths[ni] // nbinsize)]
         # ensure bpresent is list of bools
         bpresent = list(map(bool, bpresent))
@@ -201,7 +201,7 @@ def make_binary_data_from_bed(
                 options.control,
             )
             # once it comes out of load_grid return cgridcontrol to correct size
-            for ni in range(len(chroms)):
+            for ni in range(lenchroms):
                 gridcontrol[ni] = np.asarray(
                     cgridcontrol[ni][0 : lengths[ni] // nbinsize]
                 )
@@ -241,7 +241,7 @@ def make_binary_data_from_bed(
             options.dcountthresh,
         )
         print(time.time() - start_time)
-        for nchrom in range(len(chroms)):
+        for nchrom in range(lenchroms):
             if bpresent[nchrom] and bpresentcontrol[nchrom]:
                 # we have both primary and control data for the mark
                 szfile = pathlib.Path(
@@ -306,7 +306,7 @@ def make_binary_data_from_bed(
             options.dcountthresh,
         )
         print(time.time() - start_time)
-        for nchrom in range(len(chroms)):
+        for nchrom in range(lenchroms):
             if bpresent[nchrom]:
                 szfile = os.path.join(
                     options.szoutputbinarydir,

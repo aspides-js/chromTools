@@ -63,4 +63,4 @@ In this example, we use the files test_s1.bed test_s2.bed as input.
 
 :code:`chromTools complete -f test_s1.bed test_s2.bed --outdir tmp/ --increment 25 --genome hg37 --paired`
 
-This command first concatenates the files into downsampled.0.bed. This file is then downsampled, binarisation run on each of these and proportion of marks found calculated. The command outputs a text file with the metrics, and plots the results.
+This command first concatenates the files into subsampled.0.bed. This file is then subsampled, binarisation run on each of these and proportion of marks found calculated. The command outputs a text file with the metrics, and plots the results.
