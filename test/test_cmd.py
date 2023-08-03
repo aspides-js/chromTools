@@ -10,7 +10,7 @@ import logging
 
 import pytest
 
-from chromTools.cmd import cat_bed, discard, wc
+from chromTools.complete_cmd import cat_bed, discard, wc
 
 # --------------------------------------------------------------------------------#
 ## happy path
@@ -114,9 +114,10 @@ def test_empty_data():
     assert pytest_wrapped_e.value.code == 1
 
 
-#---------------------------------------------------------------------------#
+# ---------------------------------------------------------------------------#
 
 ## chmm binarise
+
 
 def test_load_grid():
     pass

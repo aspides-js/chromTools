@@ -4,11 +4,11 @@ Internal Functions
 chromTools complete
 -------------------
 
-.. autofunction:: chromTools.cmd.cat_bed
+.. autofunction:: chromTools.complete_cmd.cat_bed
 
-.. autofunction:: chromTools.cmd.wc
+.. autofunction:: chromTools.complete_cmd.wc
 
-.. autofunction:: chromTools.cmd.subsample   
+.. autofunction:: chromTools.complete_cmd.subsample   
 
 .. autofunction:: chromTools.chmm_cmd.make_binary_data_from_bed
 

@@ -16,7 +16,7 @@ the distribution).
 import argparse as ap
 import sys
 
-from chromTools import cmd
+from chromTools import complete_cmd
 from chromTools.constants import COMPLETE_VERSION
 from chromTools.validate import args_validator
 
