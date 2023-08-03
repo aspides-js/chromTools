@@ -19,16 +19,16 @@ chromTools complete
 ~~~~~~~~~~~~~~~~~~~
 
 **1. Concatenates**
-The tool takes as input aligned BED files (not peak called files) from ChIP-seq, ATAC-seq or WGBS experiments. Control data can also be optionally included. It first concatenates the input files into a file containing all lines of the dataset :code:`downsampled.0.bed`. If control files are specified these are concatenated to create :code:`downsampled.ctrl.bed`.
+The tool takes as input aligned BED files (not peak called files) from ChIP-seq, ATAC-seq or WGBS experiments. Control data can also be optionally included. It first concatenates the input files into a file containing all lines of the dataset :code:`subsampled.0.bed`. If control files are specified these are concatenated to create :code:`subsampled.ctrl.bed`.
 
 .. image:: _static/img/concat.jpg
   :width: 100%
   :alt: Alternative text
 
-**2. Downsamples**
-After concatenating the samples, a random downsampling algorithm is applied to the complete dataset to retain an incremental (user-specified) subset of the reads e.g. of a complete 1000 read dataset, the user may specify an increment of 200 and the program will generate 4 files with 200, 400, 600 and 800 reads respectively. Reads from the same template (e.g. read-pairs, secondary and supplementary reads) are all either kept or discarded as a unit, with the aim of retaining reads from :math:`increment * template`. Each read is given a probability P of being retained so that runs performed with the exact same input in the same order and with the same value for :code:`RANDOM_SEED` will produce the same results. Due to the nature of the algorithm, the results will be approximate. Particularly, the accuracy of the downsampling algorithm will be much lower if the increment represents a very small proportion of the total. This is assumed not to be an issue in most use cases as the program is designed to give an overview of completeness and data-points for very small increments are superfluous to this aim.
+**2. Subsamples**
+After concatenating the samples, a random subsampling algorithm is applied to the complete dataset to retain an incremental (user-specified) subset of the reads e.g. of a complete 1000 read dataset, the user may specify an increment of 200 and the program will generate 4 files with 200, 400, 600 and 800 reads respectively. Reads from the same template (e.g. read-pairs, secondary and supplementary reads) are all either kept or discarded as a unit, with the aim of retaining reads from :math:`increment * template`. Each read is given a probability P of being retained so that runs performed with the exact same input in the same order and with the same value for :code:`RANDOM_SEED` will produce the same results. Due to the nature of the algorithm, the results will be approximate. Particularly, the accuracy of the downsampling algorithm will be much lower if the increment represents a very small proportion of the total. This is assumed not to be an issue in most use cases as the program is designed to give an overview of completeness and data-points for very small increments are superfluous to this aim.
 
-.. image:: _static/img/downsample.jpg
+.. image:: _static/img/subsample.jpg
   :width: 100%
   :alt: Alternative text
 

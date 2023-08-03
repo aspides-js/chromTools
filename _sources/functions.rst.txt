@@ -8,7 +8,7 @@ chromTools complete
 
 .. autofunction:: chromTools.cmd.wc
 
-.. autofunction:: chromTools.cmd.downsample   
+.. autofunction:: chromTools.cmd.subsample   
 
 .. autofunction:: chromTools.chmm_cmd.make_binary_data_from_bed
 
