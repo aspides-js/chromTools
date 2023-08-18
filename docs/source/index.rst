@@ -27,6 +27,7 @@ Contents
    install
    usage
    functions
+   troubleshooting
 
 
 Indices

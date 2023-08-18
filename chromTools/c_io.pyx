@@ -29,6 +29,33 @@ def read_to_grid(file_path,
         int nbinsize, 
         np.ndarray[np.int64_t, ndim=3] grid, 
         list bpresent):
+    """
+    Reads data from a file and populates a grid with the data.
+
+    This function reads the specified file line by line, processes each line, and adds the data to the grid.
+    The grid is a three-dimensional array that represents the data in a structured manner based on the provided
+    parameters.
+
+    :param str file_path: The path to the file to be read.
+    :param dict hmchrom: A dictionary containing mappings of chromosome names to chromosome indices.
+    :param int nchromcol: The column index for the chromosome information in the file.
+    :param int nstrandcol: The column index for the strand information in the file.
+    :param int nbegincol: The column index for the start position of the data in the file.
+    :param int nendcol: The column index for the end position of the data in the file.
+    :param int noffsetleft: The amount to subtract from the left coordinate to make it 0-based inclusive.
+    :param int noffsetright: The value to add to the right coordinate for 0-based, non-inclusive bed files.
+    :param int nshift: The shift value to apply to the read data.
+    :param int nmark: The mark index for the data in the grid.
+    :param int nbinsize: The number of base pairs in a bin.
+    :param numpy.ndarray grid: A three-dimensional numpy array for storing the data.
+    :param list bpresent: A list that keeps track of the presence of data for each chromosome.
+
+    :raises FileNotFoundError: If the specified file_path does not exist or cannot be opened.
+    :raises ValueError: If an invalid strand is encountered in the file.
+
+    :returns: The updated grid with the data read from the file and a list indicating the presence of data for each chromosome.
+    :rtype: numpy.ndarray, list
+    """
     cdef char* szchrom
     cdef char* szstrand
     cdef int nbin, nchrom
