@@ -19,7 +19,7 @@ chromTools complete
 ~~~~~~~~~~~~~~~~~~~
 
 **1. Concatenates**
-The tool takes as input aligned BED files (not peak called files) from ChIP-seq, ATAC-seq or WGBS experiments. Control data can also be optionally included. It first concatenates the input files into a file containing all lines of the dataset :code:`subsampled.0.bed`. If control files are specified these are concatenated to create :code:`subsampled.ctrl.bed`.
+The tool takes as input aligned BED files (not peak called files) from ChIP-seq, ATAC-seq or any genomic dataset which has been enriched for specific sites across the genome. Control data can also be optionally included. It first concatenates the input files into a file containing all lines of the dataset :code:`subsampled.0.bed`. If control files are specified these are concatenated to create :code:`subsampled.ctrl.bed`.
 
 .. image:: _static/img/concat.jpg
   :width: 100%
