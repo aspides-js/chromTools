@@ -53,7 +53,7 @@ def main():
 
     ## Run
     if args.subcommand == "complete":
-        cmd.run(options)
+        complete_cmd.run(options)
         options.info("Complete")
 
 

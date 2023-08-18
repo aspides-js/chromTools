@@ -90,14 +90,6 @@ def make_binary_data_from_bed(
     hsmarks = set([szmark])
     hmfiles = {f"{szcell}\t{szmark}": [f"subsampled.{n}.bed"]}
 
-    if not options.control:
-        hscellnocontrol = hscells
-        hscellcontrol = None
-    else:
-        hscellcontrol = hscells
-        hscellnocontrol = set()
-        hmfilescontrol = {f"{szcell}\t{szmark}": ["subsampled.ctrl.bed"]}
-
     ## reads in the chromosome length information file
     # the first column of this file is the chromosome and the second is the chromsome length
     with open(options.szchromlengthfile) as brchrom:
@@ -129,32 +121,21 @@ def make_binary_data_from_bed(
     cgrid = np.zeros((lenchroms, lengths[0] // nbinsize, nummarks), dtype=int)
     bpresentmarks = [False] * nummarks
 
-    # generates a three dimensional array with each chromosome, the lengths of each chr divided by binsize, and the number of marks (always 1 in complete)
+    # set variables for control data
+    # cgridcontrol - generates a three dimensional array with each chromosome, the lengths of each chr divided by binsize, and the number of marks (always 1 in complete)
     if options.control:
         cgridcontrol = np.ones((lenchroms, lengths[0] // nbinsize, nummarks), dtype=int)
         gridcontrol = np.empty((lenchroms,), dtype=np.ndarray)
         sumgridcontrol = np.empty((lenchroms,), dtype=np.ndarray)
         bpresentcontrol = [False] * lenchroms
         bpresentmarkscontrol = [False] * nummarks
+        numcontrolmarks = nummarks
+        hmfilescontrol = {f"{szcell}\t{szmark}": ["subsampled.ctrl.bed"]}
 
     # ----------------------------------------
 
     for szcell in hscells:
         bpresent = [False] * lenchroms
-        # going through each declared cell type
-        bmissing = szcell in hscellnocontrol
-        if hscellcontrol is None:
-            # no control data for this cell type
-            bcontrolfile = False
-        else:
-            bcontrolfile = True
-            if len(hscellcontrol) == 1 and not bmissing:
-                # we have one control for all marks
-                numcontrolmarks = 1
-            else:
-                # will allocate the full memory for all marks
-                numcontrolmarks = nummarks
-
         # loading data for the cell type
         print(time.time() - start_time)
         print("LOAD GRID")
@@ -181,10 +162,10 @@ def make_binary_data_from_bed(
         # ensure bpresent is list of bools
         bpresent = list(map(bool, bpresent))
 
-        if bcontrolfile:
+        if options.control:
             # we have control data loading cell type data for that
             print("LOAD GRID CONTROL")
-            cgridcontrol, bpresentcontrol, bpresentmarkscontrol = load_grid(
+            cgridcontrol, bpresentcontrol, bpresentmarkscontrol = cload_grid(
                 cgridcontrol,
                 bpresentcontrol,
                 bpresentmarkscontrol,
@@ -196,7 +177,7 @@ def make_binary_data_from_bed(
                 hmfilescontrol,
                 szcell,
                 options.szcontroldir,
-                hmchrom,
+                chmchrom,
                 options.npseudocountcontrol,
                 options.control,
             )
@@ -213,7 +194,7 @@ def make_binary_data_from_bed(
     nummarks_m1 = nummarks - 1
 
     count, total = 0, 0  # number of marks & total bins in each chr
-    if bcontrolfile:
+    if options.control:
         # binarization will be based on control data
         print(time.time() - start_time)
         print("windowsumgrid_numba")
@@ -452,71 +433,6 @@ def cload_grid(
                     bpresent,
                 )
     print(grid.ndim)
-    return grid, bpresent, bpresentmarks
-
-
-def load_grid(
-    grid,
-    bpresent,
-    bpresentmarks,
-    marks,
-    nshift,
-    nbinsize,
-    noffsetleft,
-    noffsetright,
-    hmfiles,
-    szcell,
-    szmarkdir,
-    hmchrom,
-    ninitval,
-    bcontrol,
-):
-    nummarks = len(grid[0][0])
-    nchromcol, nbegincol, nendcol, nstrandcol, nmaxindex = 0, 1, 2, -1, -1
-    for nmark in range(nummarks):
-        alfiles = hmfiles.get(f"{szcell}\t{marks[nmark]}")
-        if alfiles is None:
-            if bcontrol:
-                print(
-                    f"Warning did not find control data for {szcell} {marks[nmark]} treating as missing"
-                )
-            else:
-                print(
-                    f"Warning did not find data for {szcell} {marks[nmark]} treating as missing"
-                )
-
-            bpresentmarks[nmark] = False
-            if not bcontrol:
-                # slight efficiency improvement here in v1.04
-                for nchrom in range(len(grid)):
-                    numbins = len(grid[nchrom])
-                    for nbin in range(numbins):
-                        grid[nchrom][nbin][nmark] = -1
-        else:
-            bpresentmarks[nmark] = True
-            for nfile in range(len(alfiles)):
-                szfile = alfiles[nfile]
-                with open(os.path.join(szmarkdir, szfile), "r") as brbed:
-                    for szLine in brbed:
-                        szLineA = szLine.split()
-                        szchrom = szLineA[nchromcol]
-                        objInt = hmchrom.get(szchrom)
-                        if objInt is not None:
-                            nchrom = objInt
-                            szstrand = szLineA[nstrandcol]
-                            if szstrand == "+":
-                                nbin = (
-                                    int(szLineA[nbegincol]) - noffsetleft + nshift
-                                ) // nbinsize
-                            elif szstrand == "-":
-                                nbin = (
-                                    int(szLineA[nendcol]) - noffsetright - nshift
-                                ) // nbinsize
-                            else:
-                                raise ValueError(f"{szstrand} is an invalid strand!")
-                            if nbin >= 0 and nbin < len(grid[nchrom]):
-                                grid[nchrom][nbin][nmark] += 1
-                                bpresent[nchrom] = True
     return grid, bpresent, bpresentmarks
 
 
