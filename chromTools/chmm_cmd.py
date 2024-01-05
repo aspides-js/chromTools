@@ -137,8 +137,6 @@ def make_binary_data_from_bed(
     for szcell in hscells:
         bpresent = [False] * lenchroms
         # loading data for the cell type
-        print(time.time() - start_time)
-        print("LOAD GRID")
         cgrid, bpresent, bpresentmarks = cload_grid(
             cgrid,
             bpresent,
@@ -164,7 +162,6 @@ def make_binary_data_from_bed(
 
         if options.control:
             # we have control data loading cell type data for that
-            print("LOAD GRID CONTROL")
             cgridcontrol, bpresentcontrol, bpresentmarkscontrol = cload_grid(
                 cgridcontrol,
                 bpresentcontrol,
@@ -190,13 +187,11 @@ def make_binary_data_from_bed(
                     (lengths[ni] // nbinsize, numcontrolmarks), dtype=int
                 )
 
-            print(time.time() - start_time)
     nummarks_m1 = nummarks - 1
 
     count, total = 0, 0  # number of marks & total bins in each chr
     if options.control:
         # binarization will be based on control data
-        print(time.time() - start_time)
         print("windowsumgrid_numba")
         for nchrom in range(len(gridcontrol)):
             for nbin in range(len(sumgridcontrol[nchrom])):
@@ -210,7 +205,7 @@ def make_binary_data_from_bed(
                     options.nflankwidthcontrol,
                 )
         # determiming thresholds for each mark and background depth
-        options.info("DETERMINE FROM BINNED CTL_numba")
+
         thresholds = determine_mark_thresholds_from_binned_data_array_against_control(
             grid,
             sumgridcontrol,
@@ -221,7 +216,6 @@ def make_binary_data_from_bed(
             options.bcontainsthresh,
             options.dcountthresh,
         )
-        print(time.time() - start_time)
         for nchrom in range(lenchroms):
             if bpresent[nchrom] and bpresentcontrol[nchrom]:
                 # we have both primary and control data for the mark
@@ -274,10 +268,7 @@ def make_binary_data_from_bed(
                         else:
                             pw.write("0\n")
                             total += 1
-        print(time.time() - start_time)
     else:  ## if no control file
-        print("Treating as no control")
-        options.info("DETERMINE FROM BINNED_numba")
         thresholds = determine_mark_thresholds_from_binned_data_array(
             grid,
             bpresent,
@@ -286,7 +277,7 @@ def make_binary_data_from_bed(
             options.bcontainsthresh,
             options.dcountthresh,
         )
-        print(time.time() - start_time)
+
         for nchrom in range(lenchroms):
             if bpresent[nchrom]:
                 szfile = os.path.join(
@@ -316,7 +307,6 @@ def make_binary_data_from_bed(
                         else:
                             pw.write("0\n")
                             total += 1
-        print(time.time() - start_time)
     return count, total
 
 
@@ -432,7 +422,6 @@ def cload_grid(
                     grid,
                     bpresent,
                 )
-    print(grid.ndim)
     return grid, bpresent, bpresentmarks
 
 
