@@ -116,29 +116,6 @@ def args_validator(options):
     return options
 
 
-# def assert_correct_input(f):
-#     """
-#     """
-#     open(f, "r").readline()
-
-
-def assert_correct_input(f_path):
-    """
-    Test whether the file is gz compressed (first two bytes are 1f 8b).
-
-    :param f_path: Path to the file.
-    :type f_path: str
-    :return: Boolean specifying whether the file can be opened or not.
-    :rtype: bool
-    """
-    with open(f_path, "rb") as f:
-        if (f.read(2) == b'\x1f\x8b'):
-            print("uncompressing file")
-            gz_line = gz.open(f_path, "rb").readline()
-            print(len(gz_line.split(b'\t')))
-            if (len(gz_line.split(b'\t')) < 4):
-                print("WARNING: File has fewer than four tab-delimited columns, are these bed files? Terminating")
-
 def assert_compressed(f):
     """
     Test whether the file is gz compressed (first two bytes are 1f 8b).
@@ -150,6 +127,13 @@ def assert_compressed(f):
     """
     with open(f, "rb") as f:
         return f.read(2) == b'\x1f\x8b'
+
+
+def benchmark(outdir, step, interval_time, timestr):
+    bench_f = Path(outdir, f".bench_{timestr}.log")
+    with open(bench_f, "a") as bench_f:
+        bench_f.write(f"{step}\t{interval_time}\n")
+
 
 # -----------------------------------------------------------------------------------#
 

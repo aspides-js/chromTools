@@ -20,7 +20,7 @@ import numpy as np
 import pandas as pd
 
 from chromTools.chmm_cmd import make_binary_data_from_bed
-from chromTools.validate import assert_compressed, chmm_validator
+from chromTools.validate import assert_compressed, chmm_validator, benchmark
 
 
 # ------------------------------------
@@ -33,17 +33,27 @@ def run(options):
     :param options: Command line options.
     :type options: Namespace object.
     """
-    ## Concatenating
-    cat_bed(options.files, options.control, options.subdir, options.info, options.warn)
-    total, nfile = wc(
-        options.increment, options.subdir, options.info, options.warn, options.paired
-    )
-
     start_time = time.time()
     options.start_time = start_time
-    options.info(f"--- {(time.time() - start_time)} seconds ---")
+    timestr = time.strftime("%Y%m%d-%H%M%S")
 
-    ## Downsampling
+    ## Concatenating
+    options.info("Concatenating files...")
+    cat_bed(options.files, options.control, options.subdir, options.warn)
+
+    options.info(f"--- {(time.time() - start_time)} seconds ---")
+    interval_time = time.time()
+    benchmark(options.outdir, "CONCAT", time.time() - start_time, timestr)
+
+    options.info("Calculating total read number...")
+    total, nfile = wc(
+        options.increment, options.subdir, options.warn, options.paired
+    )
+    
+    options.info(f"--- {(time.time() - interval_time)} seconds ---")
+    interval_time = time.time()
+
+    ## Subsampling
     options.info("Subsampling...")
     options.info(f"CPU number: {str(mp.cpu_count())}")
 
@@ -56,7 +66,10 @@ def run(options):
     for res in pool.starmap(subsample, args):
         r.setdefault(res[0], [])
         r[res[0]].append(res[1])
-    options.info(f"--- {(time.time() - start_time)} seconds ---")
+    options.info(f"--- {(time.time() - interval_time)} seconds ---")
+    
+    interval_time = time.time()
+    benchmark(options.outdir, "SUBSAMPLE", time.time() - interval_time, timestr)
 
     # nfile = 1
     ## Binarising
@@ -70,18 +83,24 @@ def run(options):
     for res in pool.starmap(run_chmm, args):
         r.setdefault(res[0], [])
         r[res[0]].append(res[1])
-    options.info(f"--- {(time.time() - start_time)} seconds ---")
+    options.info(f"--- {(time.time() - interval_time)} seconds ---")
+
+    interval_time = time.time()
+    benchmark(options.outdir, "BINARISE", time.time() - interval_time, timestr)
 
     pool.close()
 
     param_write(r, options.outdir)
     param_plot(r, options.outdir)
 
+    options.info(f"--- Complete: {(time.time() - start_time)} seconds ---")
+    benchmark(options.outdir, "TOTAL", time.time() - start_time, timestr)
+
 
 # --------------------------------------------------------------------------------#
 
 
-def cat_bed(files, control, subdir, info, warn):
+def cat_bed(files, control, subdir, warn):
     """
     Concatenate compressed or uncompressed files into subsampled.0.bed.
 
@@ -95,7 +114,6 @@ def cat_bed(files, control, subdir, info, warn):
     :param warn: Logging function for warning messages.
 
     """
-    info("Concatenating files...")
     start_time = time.time()
     with open(pathlib.Path(subdir / "subsampled.0.bed"), "wb") as wfd:
         for f in files:
@@ -121,10 +139,8 @@ def cat_bed(files, control, subdir, info, warn):
                     with open(f, "rb") as fd:
                         shutil.copyfileobj(fd, wfd)
 
-    info(f"--- {(time.time() - start_time)} seconds ---")
 
-
-def wc(increment, subdir, info, warn, paired):
+def wc(increment, subdir, warn, paired):
     """Count total read number
 
     :param increment: The amount to increase each subsampled file by.
@@ -140,7 +156,6 @@ def wc(increment, subdir, info, warn, paired):
     :rtype: tuple[int, int]
 
     """
-    info("Calculating total read number...")
     total = int(check_output(["wc", "-l", f"{subdir}/subsampled.0.bed"]).split()[0])
 
     if paired:

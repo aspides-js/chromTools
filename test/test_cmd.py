@@ -31,7 +31,7 @@ def test_concatenate():
     warn = logging.warning
     info = logging.info
 
-    cat_bed(files = files, control = False, subdir = subdir, info = info, warn = warn)
+    cat_bed(files = files, control = False, subdir = subdir, warn = warn)
 
     outfile = Path(subdir, "subsampled.0.bed")
     total_of = int(check_output(["wc", "-l", f"{outfile}"]).split()[0])
@@ -100,7 +100,7 @@ def test_empty_input():
     warn = logging.warning
     info = logging.info
 
-    cat_bed(files = files, control = False, subdir = subdir, info = info, warn = warn)
+    cat_bed(files = files, control = False, subdir = subdir, warn = warn)
 
     # assert that 
     with pytest.raises(SystemExit) as pytest_wrapped_e:
@@ -126,7 +126,7 @@ def test_incorrect_input():
 
     # assert that 
     with pytest.raises(SystemExit) as pytest_wrapped_e:
-        cat_bed(files = files, control = False, subdir = subdir, info = info, warn = warn)
+        cat_bed(files = files, control = False, subdir = subdir, warn = warn)
 
     assert pytest_wrapped_e.type == SystemExit
     assert pytest_wrapped_e.value.code == 1
