@@ -54,7 +54,6 @@ def main():
     ## Run
     if args.subcommand == "complete":
         complete_cmd.run(options)
-        options.info("Complete")
 
 
 def add_complete_parser(subparsers):
