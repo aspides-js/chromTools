@@ -70,8 +70,10 @@ def args_validator(options):
     for f in options.files:
         if not Path(f).exists():
             raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), f)
+        # incorrect data format
 
-    ## files (path)
+
+    ## ctrl files (path)
     if options.control != False:
         for f in options.control:
             if not Path(f).exists():
@@ -114,21 +116,40 @@ def args_validator(options):
     return options
 
 
+# def assert_correct_input(f):
+#     """
+#     """
+#     open(f, "r").readline()
+
+
+def assert_correct_input(f_path):
+    """
+    Test whether the file is gz compressed (first two bytes are 1f 8b).
+
+    :param f_path: Path to the file.
+    :type f_path: str
+    :return: Boolean specifying whether the file can be opened or not.
+    :rtype: bool
+    """
+    with open(f_path, "rb") as f:
+        if (f.read(2) == b'\x1f\x8b'):
+            print("uncompressing file")
+            gz_line = gz.open(f_path, "rb").readline()
+            print(len(gz_line.split(b'\t')))
+            if (len(gz_line.split(b'\t')) < 4):
+                print("WARNING: File has fewer than four tab-delimited columns, are these bed files? Terminating")
+
 def assert_compressed(f):
     """
-    Test whether the file is compressed (can be opened).
+    Test whether the file is gz compressed (first two bytes are 1f 8b).
 
     :param f: Path to the file.
     :type f: str
     :return: Boolean specifying whether the file can be opened or not.
     :rtype: bool
     """
-    try:
-        open(f, "r").readline()
-        return False
-    except:
-        return True
-
+    with open(f, "rb") as f:
+        return f.read(2) == b'\x1f\x8b'
 
 # -----------------------------------------------------------------------------------#
 

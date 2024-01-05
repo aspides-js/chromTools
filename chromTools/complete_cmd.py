@@ -28,13 +28,13 @@ from chromTools.validate import assert_compressed, chmm_validator
 # ------------------------------------
 def run(options):
     """
-    The main function pipeline for chromTools complete.
+    The function pipeline for chromTools complete.
 
     :param options: Command line options.
     :type options: Namespace object.
     """
     ## Concatenating
-    cat_bed(options.files, options.control, options.subdir, options.info)
+    cat_bed(options.files, options.control, options.subdir, options.info, options.warn)
     total, nfile = wc(
         options.increment, options.subdir, options.info, options.warn, options.paired
     )
@@ -65,7 +65,7 @@ def run(options):
         (n, options)  # gridcontrol, sumgridcontrol, bpresentcontrol,
         for n in range(0, nfile)
     ]  # nfile should be number calculated by wc()
-    print(time.time() - start_time)
+
     r["0"] = [total]
     for res in pool.starmap(run_chmm, args):
         r.setdefault(res[0], [])
@@ -81,7 +81,7 @@ def run(options):
 # --------------------------------------------------------------------------------#
 
 
-def cat_bed(files, control, subdir, info):
+def cat_bed(files, control, subdir, info, warn):
     """
     Concatenate compressed or uncompressed files into subsampled.0.bed.
 
@@ -92,6 +92,7 @@ def cat_bed(files, control, subdir, info):
     :param subdir: Path to the subsample directory.
     :type subdir: str
     :param info: Logging function for informational messages.
+    :param warn: Logging function for warning messages.
 
     """
     info("Concatenating files...")
@@ -101,6 +102,10 @@ def cat_bed(files, control, subdir, info):
             if assert_compressed(f):
                 print("File is compressed")
                 with gz.open(f, "rb") as fd:
+                    gz_line = fd.readline()
+                    if (len(gz_line.split(b'\t')) < 4):
+                        warn(f"File {f} has fewer than the required four tab-delimited columns. Are these BED files? Terminating.")
+                        sys.exit(1)
                     shutil.copyfileobj(fd, wfd)
             else:
                 with open(f, "rb") as fd:
@@ -242,7 +247,7 @@ def subsample(n, options, total):
 
 def run_chmm(n, options):  # gridcontrol, sumgridcontrol, bpresentcontrol,
     """
-    Binarise the input data suing the ChromHMM binarisation algorithm.
+    Binarise the input data using the ChromHMM binarisation algorithm.
 
     :param n: File number.
     :type n: int
@@ -375,7 +380,7 @@ def mm(df, outdir):
     plt.savefig(pathlib.Path(outdir / "mmplot.jpg"))
 
     with open(pathlib.Path(outdir / "mm.txt"), "w") as f:
-        f.write(f'{result.params["Vm"].value}\t{result.params["Km"].value}')
+        f.write(f'{result.params["Vm"].value}\t{round(result.params["Km"].value)}')
 
 
 # -------------------------------------------------------------------------------#
