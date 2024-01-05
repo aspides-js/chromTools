@@ -44,7 +44,7 @@ def run(options):
     options.info(f"--- {(time.time() - start_time)} seconds ---")
 
     ## Downsampling
-    options.info("Downsampling...")
+    options.info("Subsampling...")
     options.info(f"CPU number: {str(mp.cpu_count())}")
 
     pool = mp.Pool()
