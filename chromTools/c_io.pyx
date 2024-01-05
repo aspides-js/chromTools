@@ -98,3 +98,6 @@ def read_to_grid(file_path,
     # Close the file
     fclose(file)
     return grid, bpresent
+
+
+#def c_subsample():
