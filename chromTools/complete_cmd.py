@@ -11,6 +11,7 @@ import pathlib
 import shutil
 import sys
 import time
+import os
 from subprocess import check_output
 
 import lmfit
@@ -21,6 +22,7 @@ import pandas as pd
 
 from chromTools.chmm_cmd import make_binary_data_from_bed
 from chromTools.validate import assert_compressed, chmm_validator, benchmark
+import chromTools.c_io
 
 
 # ------------------------------------
@@ -210,7 +212,7 @@ def discard(maxHashValue, seed, line):
     Returns:
             bool: Boolean specifying if readname is below or above discard threshold
     """
-    readname = line.split("\t")[3].rsplit("/")[
+    readname = line.split(b"\t")[3].rsplit(b"/")[
         0
     ]  # extract readname, remove everything after '/' (read pair if paired)
 
@@ -241,17 +243,20 @@ def subsample(n, options, total):
 
     """
     proportion = (options.increment * n) / total
-    outfile = pathlib.Path(options.subdir / f"subsampled.{n}.bed")
+    # outfile = pathlib.Path(options.subdir / f"subsampled.{n}.bed")
     reads = 0
     a = params(proportion)
-    with open(outfile, "w") as outf:
-        with open(pathlib.Path(options.subdir / "subsampled.0.bed"), "r") as f:
-            for line in f:
-                if discard(a, options.seed, line):
-                    continue
-                else:
-                    outf.write(line)
-                    reads += 1
+    # with open(outfile, "w") as outf:
+    #     with open(pathlib.Path(options.subdir / "subsampled.0.bed"), "r") as f:
+    #         for line in f:
+    #             if discard(a, options.seed, line):
+    #                 continue
+    #             else:
+    #                 outf.write(line)
+    #                 reads += 1
+    file_path = os.path.join(options.subdir, "subsampled.0.bed")
+    outfile = os.path.join(options.subdir, f"subsampled.{n}.bed")
+    reads = chromTools.c_io.c_subsample(file_path, outfile, a, options.seed)
     if options.paired:
         reads = reads / 2
     return str(n), reads
