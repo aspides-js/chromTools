@@ -121,7 +121,7 @@ cpdef int c_subsample(str file_path, str outf_path, long a, long seed):
 
     while fgets(line, sizeof(line), file) is not NULL:
         readname = line.split(b"\t")[3].rsplit(b"/")[0]
-        hashInt = mmh3.hash64(readname, 10)[0]
+        hashInt = mmh3.hash64(readname, seed)[0]
         if hashInt > a: #c_discard(a, seed line):
             continue
         else:

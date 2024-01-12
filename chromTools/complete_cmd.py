@@ -39,6 +39,9 @@ def run(options):
     options.start_time = start_time
     timestr = time.strftime("%Y%m%d-%H%M%S")
 
+    options.info("RUNNING FASTER C_SUBSAMPLE")
+    benchmark(options.outdir, "C_SUBSAMPLE", "TIME", timestr)
+
     ## Concatenating
     options.info("Concatenating files...")
     cat_bed(options.files, options.control, options.subdir, options.warn)
