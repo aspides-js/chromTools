@@ -104,7 +104,7 @@ def test_empty_input():
 
     # assert that 
     with pytest.raises(SystemExit) as pytest_wrapped_e:
-        wc(increment, subdir, info, warn, False)
+        wc(increment, subdir, warn, False)
 
     assert pytest_wrapped_e.type == SystemExit
     assert pytest_wrapped_e.value.code == 1

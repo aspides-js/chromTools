@@ -5,12 +5,15 @@
 # ------------------------------------
 
 from libc.stdlib cimport malloc, free
-from libc.stdio cimport FILE, fopen, fclose, fgets
+from libc.stdio cimport FILE, fopen, fclose, fgets, fwrite
 from cpython.string cimport PyString_FromStringAndSize
 
 
 import numpy as np
+import mmh3
 cimport numpy as np
+
+import chromTools.complete_cmd
 
 # ------------------------------------
 # Misc function(s)
@@ -100,4 +103,56 @@ def read_to_grid(file_path,
     return grid, bpresent
 
 
-#def c_subsample():
+cpdef int c_subsample(str file_path, str outf_path, long a, long seed):
+    # Open the file
+    cdef FILE *file = fopen(file_path.encode(), "r")
+    cdef FILE *outf = fopen(outf_path.encode(), "w")
+
+    cdef bytes readname
+    cdef long hashInt
+
+    # Error handling if file cannot be opened
+    if file is NULL:
+        raise FileNotFoundError(f"File '{file_path}' not found.")
+        
+    # Read the file line by line
+    cdef char line[1024]
+    cdef int reads = 0
+
+    while fgets(line, sizeof(line), file) is not NULL:
+        readname = line.split(b"\t")[3].rsplit(b"/")[0]
+        hashInt = mmh3.hash64(readname, seed)[0]
+        if hashInt > a: #c_discard(a, seed line):
+            continue
+        else:
+            fwrite(line, sizeof(char), len(line), outf)
+            reads += 1
+
+    fclose(file)
+    fclose(outf)
+    return reads    
+
+
+cdef c_discard(long maxHashValue, long seed, char line):
+    """Generate a random hash from readname using seed. If number above proportional cut-off (True), discard read.
+
+    Args:
+            maxHashValue (int): Threshold above which reads are discarded
+            seed (int): Random seed
+            line (str): Read/line in file
+
+    Returns:
+            bool: Boolean specifying if readname is below or above discard threshold
+    """
+    cdef bytes readname = line.split(b"\t")[3].rsplit(b"/")[
+        0
+    ]  # extract readname, remove everything after '/' (read pair if paired)
+
+    if len(readname) < 2:
+        raise ValueError(
+            f"Readname length is {len(readname)}! Check fourth column of input files contains a valid readname."
+        )
+
+    cdef long hashInt = mmh3.hash64(readname, 10)[0]
+
+    return hashInt > maxHashValue
