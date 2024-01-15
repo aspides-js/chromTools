@@ -19,7 +19,7 @@ import chromTools.complete_cmd
 # Misc function(s)
 # ------------------------------------
 
-def read_to_grid(file_path, 
+cpdef read_to_grid(file_path, 
         dict hmchrom,
         int nchromcol, 
         int nstrandcol, 
@@ -104,6 +104,16 @@ def read_to_grid(file_path,
 
 
 cpdef int c_subsample(str file_path, str outf_path, long a, long seed):
+    """Generate a random hash from readname using seed. If number above proportional cut-off (True), discard read.
+
+    Args:
+            maxHashValue (int): Threshold above which reads are discarded
+            seed (int): Random seed
+            line (str): Read/line in file
+
+    Returns:
+            bool: Boolean specifying if readname is below or above discard threshold
+    """
     # Open the file
     cdef FILE *file = fopen(file_path.encode(), "r")
     cdef FILE *outf = fopen(outf_path.encode(), "w")
@@ -133,26 +143,19 @@ cpdef int c_subsample(str file_path, str outf_path, long a, long seed):
     return reads    
 
 
-cdef c_discard(long maxHashValue, long seed, char line):
-    """Generate a random hash from readname using seed. If number above proportional cut-off (True), discard read.
+# cdef c_discard(long maxHashValue, long seed, char line):
 
-    Args:
-            maxHashValue (int): Threshold above which reads are discarded
-            seed (int): Random seed
-            line (str): Read/line in file
+#     cdef bytes readname = line.split(b"\t")[3].rsplit(b"/")[
+#         0
+#     ]  # extract readname, remove everything after '/' (read pair if paired)
 
-    Returns:
-            bool: Boolean specifying if readname is below or above discard threshold
-    """
-    cdef bytes readname = line.split(b"\t")[3].rsplit(b"/")[
-        0
-    ]  # extract readname, remove everything after '/' (read pair if paired)
+#     if len(readname) < 2:
+#         raise ValueError(
+#             f"Readname length is {len(readname)}! Check fourth column of input files contains a valid readname."
+#         )
 
-    if len(readname) < 2:
-        raise ValueError(
-            f"Readname length is {len(readname)}! Check fourth column of input files contains a valid readname."
-        )
+#     cdef long hashInt = mmh3.hash64(readname, 10)[0]
 
-    cdef long hashInt = mmh3.hash64(readname, 10)[0]
+#     return hashInt > maxHashValue
 
-    return hashInt > maxHashValue
+

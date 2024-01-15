@@ -35,8 +35,7 @@ def run(options):
     :param options: Command line options.
     :type options: Namespace object.
     """
-    start_time = time.time()
-    options.start_time = start_time
+    start_time, options.start_time = time.time(), time.time()
     timestr = time.strftime("%Y%m%d-%H%M%S")
 
     options.info("RUNNING FASTER C_SUBSAMPLE")
@@ -73,8 +72,8 @@ def run(options):
         r[res[0]].append(res[1])
     options.info(f"--- {(time.time() - interval_time)} seconds ---")
     
-    interval_time = time.time()
     benchmark(options.outdir, "SUBSAMPLE", time.time() - interval_time, timestr)
+    interval_time = time.time()
 
     # nfile = 1
     ## Binarising
@@ -90,8 +89,8 @@ def run(options):
         r[res[0]].append(res[1])
     options.info(f"--- {(time.time() - interval_time)} seconds ---")
 
-    interval_time = time.time()
     benchmark(options.outdir, "BINARISE", time.time() - interval_time, timestr)
+    interval_time = time.time()
 
     pool.close()
 
