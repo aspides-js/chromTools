@@ -135,6 +135,7 @@ def make_binary_data_from_bed(
     # ----------------------------------------
 
     for szcell in hscells:
+        print(f"{szcell}: start grid")
         bpresent = [False] * lenchroms
         # loading data for the cell type
         cgrid, bpresent, bpresentmarks = cload_grid(
@@ -153,6 +154,7 @@ def make_binary_data_from_bed(
             0,
             options.control,
         )
+        print(f"{szcell}: end grid")
         # once it comes out of load_grid return cgrid to correct size
         grid = np.empty((lenchroms,), dtype=np.ndarray)
         for ni in range(lenchroms):
@@ -269,6 +271,7 @@ def make_binary_data_from_bed(
                             pw.write("0\n")
                             total += 1
     else:  ## if no control file
+        print(f"{hscells}: start threshold")
         thresholds = determine_mark_thresholds_from_binned_data_array(
             grid,
             bpresent,
@@ -277,7 +280,7 @@ def make_binary_data_from_bed(
             options.bcontainsthresh,
             options.dcountthresh,
         )
-
+        print(f"{hscells}: end threshold, start writing")
         for nchrom in range(lenchroms):
             if bpresent[nchrom]:
                 szfile = os.path.join(
@@ -307,6 +310,7 @@ def make_binary_data_from_bed(
                         else:
                             pw.write("0\n")
                             total += 1
+    print(f"{hscells}: end write")
     return count, total
 
 
