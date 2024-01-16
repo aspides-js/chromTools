@@ -59,38 +59,6 @@ cpdef read_to_grid(file_path,
     :returns: The updated grid with the data read from the file and a list indicating the presence of data for each chromosome.
     :rtype: numpy.ndarray, list
     """
-    cdef tuple result = read(file_path, hmchrom, nchromcol, 
-        nstrandcol, 
-        nbegincol, 
-        nendcol, 
-        noffsetleft, 
-        noffsetright, 
-        nshift, 
-        nmark,
-        nbinsize, 
-        grid, 
-        bpresent)
-
-    # Extract elements from the tuple
-    grid = result[0]
-    bpresent = result[1]
-
-    return grid, bpresent
-
-
-cdef tuple read(file_path, 
-        dict hmchrom,
-        int nchromcol, 
-        int nstrandcol, 
-        int nbegincol, 
-        int nendcol, 
-        int noffsetleft, 
-        int noffsetright, 
-        int nshift, 
-        int nmark,
-        int nbinsize, 
-        np.ndarray[np.int64_t, ndim=3] grid, 
-        list bpresent):
     cdef char* szchrom
     cdef char* szstrand
     cdef int nbin, nchrom
@@ -131,8 +99,9 @@ cdef tuple read(file_path,
 
     # Close the file
     fclose(file)
-    cdef tuple all_result=(grid, bpresent)
-    return all_result
+
+    return grid, bpresent
+
 
 # --------------------------------------------------------------------------------#                         
 
