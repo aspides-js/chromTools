@@ -276,7 +276,7 @@ def make_binary_data_from_bed(
                             total += 1
     else:  ## if no control file
         options.info(f"{hscells}: start threshold")
-        thresholds = determine_mark_thresholds_from_binned_data_array(
+        total, thresholds = determine_mark_thresholds_from_binned_data_array(
             grid,
             bpresent,
             options.dpoissonthresh,
@@ -287,10 +287,14 @@ def make_binary_data_from_bed(
             nbinsize,
         )
         options.info(f"{hscells}: end threshold, start writing")
-        count_total = chromTools.c_io.c_write(lenchroms, bpresent, lengths, nbinsize, bpresentmarks, nummarks_m1, grid, count, total, thresholds)
-        print(count_total)
-        count = count_total[0]
-        total = count_total[1]
+        # #count_total = chromTools.c_io.c_write(lenchroms, bpresent, lengths, nbinsize, bpresentmarks, nummarks_m1, grid, count, total, thresholds)
+        # print(count_total)
+        # count = count_total[0]
+        # total = count_total[1]
+        count = np.sum(thresholds[nummarks_m1] <= grid)
+        print(f"new count is {count}")
+        # print(f"bpresent is {bpresent}")
+        # count = 0
         # for nchrom in range(lenchroms):
         #     if bpresent[nchrom]:
         #         for nbin in range(lengths[nchrom]//nbinsize):
@@ -301,6 +305,7 @@ def make_binary_data_from_bed(
         #                 total += 1
         #             else:
         #                 total += 1
+        # print(f"old count is {count}")
     options.info(f"{hscells}: end write")
     return count, total
 
@@ -486,8 +491,8 @@ def determine_mark_thresholds_from_binned_data_array(
             nthresh -= 1
 
         thresholds[nj] = max(int(dfoldthresh * dlambda), nthresh, int(dcountthresh))
-
-    return thresholds
+    print(thresholds)
+    return ntotallocs, thresholds
 
 
 def determine_mark_thresholds_from_binned_data_array_against_control(
