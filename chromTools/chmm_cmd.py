@@ -135,11 +135,12 @@ def make_binary_data_from_bed(
     # ----------------------------------------
 
     for szcell in hscells:
-        print(f"{szcell}: start grid")
+        options.info(f"{szcell}: start grid")
         bpresent = [False] * lenchroms
         # loading data for the cell type
         #cgrid, bpresent, bpresentmarks = cload_grid(
         grid, bpresent, bpresentmarks = cload_grid(
+            options.info,
             cgrid,
             bpresent,
             bpresentmarks,
@@ -156,7 +157,7 @@ def make_binary_data_from_bed(
             options.control,
             lengths,
         )
-        print(f"{szcell}: end grid")
+        options.info(f"{szcell}: end grid")
         # once it comes out of load_grid return cgrid to correct size (2d lengths back to length of each chr)
         # grid = np.empty((lenchroms,), dtype=np.ndarray)
         # for ni in range(lenchroms):
@@ -274,7 +275,7 @@ def make_binary_data_from_bed(
                             pw.write("0\n")
                             total += 1
     else:  ## if no control file
-        print(f"{hscells}: start threshold")
+        options.info(f"{hscells}: start threshold")
         thresholds = determine_mark_thresholds_from_binned_data_array(
             grid,
             bpresent,
@@ -285,40 +286,22 @@ def make_binary_data_from_bed(
             lengths, 
             nbinsize,
         )
-        print(f"{hscells}: end threshold, start writing")
-        for nchrom in range(lenchroms):
-            if bpresent[nchrom]:
-                # szfile = os.path.join(
-                #     options.szoutputbinarydir,
-                #     szcell + "_" + chroms[nchrom] + "_binary.txt",
-                # )
-                # print("Writing to file " + szfile)
-                # with open(szfile, "w") as pw:
-                #     pw.write(f"{szcell}\t{chroms[nchrom]}\n")
-                #     for nmark in range(len(marks) - 1):
-                #         pw.write(f"{marks[nmark]}\t")
-                #     pw.write(f"{marks[nummarks_m1]}\n")
-                    # print(f"{szcell}: before of grid is: {len(grid[nchrom])}")
-                    # print(f"{szcell}: after of lengths is: {lengths[nchrom]//nbinsize}")
-                for nbin in range(lengths[nchrom]//nbinsize):
-                    # for nmark in range(nummarks_m1):
-                    #     if not bpresentmarks[nmark]:
-                    #         pw.write("2\t")
-                    #     elif thresholds[nmark] <= grid[nchrom, nbin, nmark]:
-                    #         pw.write("1\t")
-                    #     else:
-                    #         pw.write("0\t")
-                    if not bpresentmarks[nummarks_m1]:
-                        #pw.write("2\n")
-                        print("blah")
-                    elif thresholds[nummarks_m1] <= grid[nchrom, nbin, nummarks_m1]:
-                        # pw.write("1\n")
-                        count += 1
-                        total += 1
-                    else:
-                        # pw.write("0\n")
-                        total += 1
-    print(f"{hscells}: end write")
+        options.info(f"{hscells}: end threshold, start writing")
+        count_total = chromTools.c_io.c_write(lenchroms, bpresent, lengths, nbinsize, bpresentmarks, nummarks_m1, grid, count, total, thresholds)
+        print(count_total)
+        count = count_total[0]
+        total = count_total[1]
+        # for nchrom in range(lenchroms):
+        #     if bpresent[nchrom]:
+        #         for nbin in range(lengths[nchrom]//nbinsize):
+        #             if not bpresentmarks[nummarks_m1]:
+        #                 print("blah")
+        #             elif thresholds[nummarks_m1] <= grid[nchrom, nbin, nummarks_m1]:
+        #                 count += 1
+        #                 total += 1
+        #             else:
+        #                 total += 1
+    options.info(f"{hscells}: end write")
     return count, total
 
 
@@ -326,6 +309,7 @@ def make_binary_data_from_bed(
 
 
 def cload_grid(
+    info,
     grid,
     bpresent,
     bpresentmarks,
@@ -399,7 +383,7 @@ def cload_grid(
     # going through all the mark files in each cell type
     for nmark in range(nummarks):
         alfiles = hmfiles.get(f"{szcell}\t{marks[nmark]}")
-
+        info(f"alfiles is {alfiles}")
         if alfiles is None:
             if bcontrol:
                 print(

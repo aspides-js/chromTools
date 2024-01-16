@@ -59,6 +59,38 @@ cpdef read_to_grid(file_path,
     :returns: The updated grid with the data read from the file and a list indicating the presence of data for each chromosome.
     :rtype: numpy.ndarray, list
     """
+    cdef tuple result = read(file_path, hmchrom, nchromcol, 
+        nstrandcol, 
+        nbegincol, 
+        nendcol, 
+        noffsetleft, 
+        noffsetright, 
+        nshift, 
+        nmark,
+        nbinsize, 
+        grid, 
+        bpresent)
+
+    # Extract elements from the tuple
+    grid = result[0]
+    bpresent = result[1]
+
+    return grid, bpresent
+
+
+cdef tuple read(file_path, 
+        dict hmchrom,
+        int nchromcol, 
+        int nstrandcol, 
+        int nbegincol, 
+        int nendcol, 
+        int noffsetleft, 
+        int noffsetright, 
+        int nshift, 
+        int nmark,
+        int nbinsize, 
+        np.ndarray[np.int64_t, ndim=3] grid, 
+        list bpresent):
     cdef char* szchrom
     cdef char* szstrand
     cdef int nbin, nchrom
@@ -97,12 +129,10 @@ cpdef read_to_grid(file_path,
                 grid[nchrom, nbin, nmark] += 1
                 bpresent[nchrom] = 1
 
-
     # Close the file
     fclose(file)
-    return grid, bpresent
-
-
+    cdef tuple all_result=(grid, bpresent)
+    return all_result
 
 # --------------------------------------------------------------------------------#                         
 
@@ -123,11 +153,7 @@ cpdef int c_subsample(str file_path, str outf_path, long a, long seed):
 
     cdef bytes readname
     cdef long hashInt
-
-    # Error handling if file cannot be opened
-    if file is NULL:
-        raise FileNotFoundError(f"File '{file_path}' not found.")
-        
+       
     # Read the file line by line
     cdef char line[1024]
     cdef int reads = 0
@@ -162,3 +188,26 @@ cpdef int c_subsample(str file_path, str outf_path, long a, long seed):
 #     return hashInt > maxHashValue
 
 
+cpdef tuple c_write(int lenchroms, 
+    list bpresent, 
+    list lengths, 
+    int nbinsize, 
+    list bpresentmarks, 
+    int nummarks_m1, 
+    np.ndarray[np.int64_t, ndim=3] grid, 
+    int count, 
+    int total, 
+    list thresholds):
+    cdef int nchrom, nbin
+
+    for nchrom in range(lenchroms):
+        if bpresent[nchrom]:
+            for nbin in range(lengths[nchrom]//nbinsize):
+                if bpresentmarks[nummarks_m1]:
+                    if thresholds[nummarks_m1] <= grid[nchrom, nbin, nummarks_m1]:
+                        count += 1
+                        total += 1
+                    else:
+                        total += 1
+    cdef tuple count_total = (count, total)
+    return count_total
