@@ -103,6 +103,9 @@ cpdef read_to_grid(file_path,
     return grid, bpresent
 
 
+
+# --------------------------------------------------------------------------------#                         
+
 cpdef int c_subsample(str file_path, str outf_path, long a, long seed):
     """Generate a random hash from readname using seed. If number above proportional cut-off (True), discard read.
 
