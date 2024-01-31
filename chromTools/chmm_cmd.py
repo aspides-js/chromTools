@@ -9,6 +9,7 @@ import math
 import os
 import pathlib
 import time
+import sys
 
 import numba as nb
 import numpy as np
@@ -287,25 +288,11 @@ def make_binary_data_from_bed(
             nbinsize,
         )
         options.info(f"{hscells}: end threshold, start writing")
-        # #count_total = chromTools.c_io.c_write(lenchroms, bpresent, lengths, nbinsize, bpresentmarks, nummarks_m1, grid, count, total, thresholds)
-        # print(count_total)
-        # count = count_total[0]
-        # total = count_total[1]
+
+        # extract number of bins in grid which are greater than threshold
         count = np.sum(thresholds[nummarks_m1] <= grid)
         print(f"new count is {count}")
-        # print(f"bpresent is {bpresent}")
-        # count = 0
-        # for nchrom in range(lenchroms):
-        #     if bpresent[nchrom]:
-        #         for nbin in range(lengths[nchrom]//nbinsize):
-        #             if not bpresentmarks[nummarks_m1]:
-        #                 print("blah")
-        #             elif thresholds[nummarks_m1] <= grid[nchrom, nbin, nummarks_m1]:
-        #                 count += 1
-        #                 total += 1
-        #             else:
-        #                 total += 1
-        # print(f"old count is {count}")
+        
     options.info(f"{hscells}: end write")
     return count, total
 

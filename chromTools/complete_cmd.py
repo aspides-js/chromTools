@@ -196,8 +196,10 @@ def params(proportion):
     :return: Maximum hash value threshold above which reads are discarded.
     :rtype: int
     """
-    max_size = sys.maxsize
-    min_size = -sys.maxsize - 1
+    #max_size = sys.maxsize
+    #min_size = -sys.maxsize - 1
+    max_size = 2147483647 #32 bit system
+    min_size = -max_size - 1
     maxRange = max_size - min_size
     maxHashValue = min_size + round(maxRange * proportion)
     return maxHashValue
