@@ -41,6 +41,7 @@ cdef int c_strand_check(bytes szstrand, int szbeginline, int szendline, int noff
     :rtype: int
     """
     cdef int nbin 
+
     if szstrand == b"+\n":
         nbin = (szbeginline - noffsetleft + nshift) // nbinsize
     elif szstrand == b"-\n":
@@ -161,6 +162,7 @@ cpdef int c_subsample(str file_path, str outf_path, int a, int seed):
     while fgets(line, sizeof(line), file) is not NULL:
         # extract readname from line (4th element, strip indication of readnames 1 and 2)
         readname = line.split(b"\t")[3].rsplit(b"/")[0]
+        
         
         # convert to c-type string
         c_readname = readname

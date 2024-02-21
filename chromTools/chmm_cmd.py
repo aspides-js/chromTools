@@ -23,7 +23,7 @@ import chromTools.c_io
 
 def make_binary_data_from_bed(
     n, options
-):  # gridcontrol, sumgridcontrol, bpresentcontrol,
+):  
     """Binarize BED data, both directly and with control.
 
     :param n: File number.
