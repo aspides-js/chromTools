@@ -38,8 +38,8 @@ def run(options):
     start_time, options.start_time = time.time(), time.time()
     timestr = time.strftime("%Y%m%d-%H%M%S")
 
-    options.info("RUNNING FASTER C_SUBSAMPLE")
-    benchmark(options.outdir, "C_SUBSAMPLE", "TIME", timestr)
+    options.info("RUNNING NEW BRANCH")
+    benchmark(options.outdir, f"N={len(options.files)}", "TIME", timestr)
 
     ## Concatenating
     options.info("Concatenating files...")
@@ -196,8 +196,10 @@ def params(proportion):
     :return: Maximum hash value threshold above which reads are discarded.
     :rtype: int
     """
-    max_size = sys.maxsize
-    min_size = -sys.maxsize - 1
+    #max_size = sys.maxsize
+    #min_size = -sys.maxsize - 1
+    max_size = 2147483647 #32 bit system
+    min_size = -max_size - 1
     maxRange = max_size - min_size
     maxHashValue = min_size + round(maxRange * proportion)
     return maxHashValue
@@ -245,17 +247,10 @@ def subsample(n, options, total):
 
     """
     proportion = (options.increment * n) / total
-    # outfile = pathlib.Path(options.subdir / f"subsampled.{n}.bed")
+
     reads = 0
     a = params(proportion)
-    # with open(outfile, "w") as outf:
-    #     with open(pathlib.Path(options.subdir / "subsampled.0.bed"), "r") as f:
-    #         for line in f:
-    #             if discard(a, options.seed, line):
-    #                 continue
-    #             else:
-    #                 outf.write(line)
-    #                 reads += 1
+
     file_path = os.path.join(options.subdir, "subsampled.0.bed")
     outfile = os.path.join(options.subdir, f"subsampled.{n}.bed")
     reads = chromTools.c_io.c_subsample(file_path, outfile, a, options.seed)

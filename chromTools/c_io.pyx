@@ -4,20 +4,50 @@
 # Modules
 # ------------------------------------
 
-from libc.stdlib cimport malloc, free
-from libc.stdio cimport FILE, fopen, fclose, fgets, fwrite
+from libc.stdlib cimport malloc, free, atoi, calloc
+from libc.string cimport strtok, strncpy, strlen
+from libc.stdio cimport FILE, fopen, fclose, fgets, fwrite, printf
 from cpython.string cimport PyString_FromStringAndSize
-
+import cython
 
 import numpy as np
 import mmh3
+import sys
 cimport numpy as np
 
-import chromTools.complete_cmd
+from chromTools.mmh cimport murmurhash_32
+
+#import chromTools.complete_cmd
 
 # ------------------------------------
 # Misc function(s)
 # ------------------------------------
+
+cdef int c_strand_check(bytes szstrand, int szbeginline, int szendline, int noffsetleft, int noffsetright, int nbinsize, int nshift):
+    """
+    Determine the bin index based on strand information.
+
+    This function calculates the bin index for a given genomic region, taking into account the strand information.
+
+    :param bytes szstrand: The strand information as bytes, either b"+\\n" for positive strand or b"-\\n" for negative strand.
+    :param int szbeginline: The starting position of the genomic region.
+    :param int szendline: The ending position of the genomic region.
+    :param int noffsetleft: Offset for the left coordinate so it is 0-based inclusive
+    :param int noffsetright: Offset for the right coordinate based on bed files being 0-based but not inclusive
+    :param int nbinsize: The size of the bins. default 200
+    :param int nshift: Shift value for calculating the bin index.
+
+    :return: The calculated bin index based on the provided parameters.
+    :rtype: int
+    """
+    cdef int nbin 
+
+    if szstrand == b"+\n":
+        nbin = (szbeginline - noffsetleft + nshift) // nbinsize
+    elif szstrand == b"-\n":
+        nbin = (szendline - noffsetright - nshift) // nbinsize
+    return nbin
+
 
 cpdef read_to_grid(file_path, 
         dict hmchrom,
@@ -36,8 +66,8 @@ cpdef read_to_grid(file_path,
     Reads data from a file and populates a grid with the data.
 
     This function reads the specified file line by line, processes each line, and adds the data to the grid.
-    The grid is a three-dimensional array that represents the data in a structured manner based on the provided
-    parameters.
+    The grid is a three-dimensional array that represents each chromosome, the lengths of each chr divided by binsize, 
+    and the number of marks (always 1 in chromTools_complete).
 
     :param str file_path: The path to the file to be read.
     :param dict hmchrom: A dictionary containing mappings of chromosome names to chromosome indices.
@@ -59,11 +89,11 @@ cpdef read_to_grid(file_path,
     :returns: The updated grid with the data read from the file and a list indicating the presence of data for each chromosome.
     :rtype: numpy.ndarray, list
     """
-    cdef char* szchrom
-    cdef char* szstrand
-    cdef int nbin, nchrom
+    cdef bytes szchrom, szstrand
+    cdef int nbin, nchrom, nbeginline, nendline
     cdef int nmaxindex
     cdef list szLine
+    cdef int shape = grid.shape[1]
 
     # Open the file
     cdef FILE *file = fopen(file_path.encode(), "r")
@@ -83,56 +113,66 @@ cpdef read_to_grid(file_path,
         if objInt is not None:
             nchrom = objInt
             szstrand = szLine[nstrandcol]
-            if szstrand == b"+\n":
-                nbin = (
-                    int(szLine[nbegincol]) - noffsetleft + nshift
-                ) // nbinsize
-            elif szstrand == b"-\n":
-                nbin = (
-                    int(szLine[nendcol]) - noffsetright - nshift
-                ) // nbinsize
-            else:
-                raise ValueError(f"{szstrand} is an invalid strand!")
-            if nbin >= 0 and nbin < grid.shape[1]:
+            szbeginline = atoi(szLine[nbegincol])
+            szendline = atoi(szLine[nendcol])
+
+            # run check for positive/negative strand to output nbin
+            nbin = c_strand_check(szstrand, szbeginline, szendline, noffsetleft, noffsetright, nbinsize, nshift)
+
+            if nbin >= 0 and nbin < shape:
                 grid[nchrom, nbin, nmark] += 1
                 bpresent[nchrom] = 1
-
 
     # Close the file
     fclose(file)
     return grid, bpresent
 
 
-cpdef int c_subsample(str file_path, str outf_path, long a, long seed):
-    """Generate a random hash from readname using seed. If number above proportional cut-off (True), discard read.
 
-    Args:
-            maxHashValue (int): Threshold above which reads are discarded
-            seed (int): Random seed
-            line (str): Read/line in file
+# --------------------------------------------------------------------------------#                         
 
-    Returns:
-            bool: Boolean specifying if readname is below or above discard threshold
+cpdef int c_subsample(str file_path, str outf_path, int a, int seed):
+    """
+    Subsample reads from a file based on a hash threshold.
+
+    This function reads a file line by line, extracts the readname, hashes it using the MurmurHash3_32 algorithm, 
+    and writes the original line to a new file if the hash value is below a specified threshold, calculated 
+    based on the proportion of lines to be retained. If number above proportional cut-off (True), discard read.
+
+
+    :param str file_path: Path to the input file.
+    :param str outf_path: Path to the output file.
+    :param int a: Hash threshold; reads with hash values above this threshold will be skipped.
+    :param int seed: Seed for the MurmurHash3_32 algorithm.
+
+    :return: The number of reads written to the output file.
+    :rtype: int
     """
     # Open the file
     cdef FILE *file = fopen(file_path.encode(), "r")
     cdef FILE *outf = fopen(outf_path.encode(), "w")
 
+    cdef char* c_readname 
     cdef bytes readname
-    cdef long hashInt
+    cdef int hashInt, c_readname_len
 
-    # Error handling if file cannot be opened
-    if file is NULL:
-        raise FileNotFoundError(f"File '{file_path}' not found.")
-        
-    # Read the file line by line
+    # Read the file line by line    
     cdef char line[1024]
     cdef int reads = 0
-
     while fgets(line, sizeof(line), file) is not NULL:
+        # extract readname from line (4th element, strip indication of readnames 1 and 2)
         readname = line.split(b"\t")[3].rsplit(b"/")[0]
-        hashInt = mmh3.hash64(readname, seed)[0]
-        if hashInt > a: #c_discard(a, seed line):
+        
+        
+        # convert to c-type string
+        c_readname = readname
+        c_readname_len = strlen(c_readname)
+
+        # use c function murmurhash to hash string
+        hashInt = murmurhash_32(c_readname, c_readname_len, seed)
+        
+        # if int is above threshold then skip, otherwise write
+        if hashInt > a: 
             continue
         else:
             fwrite(line, sizeof(char), len(line), outf)
@@ -141,21 +181,4 @@ cpdef int c_subsample(str file_path, str outf_path, long a, long seed):
     fclose(file)
     fclose(outf)
     return reads    
-
-
-# cdef c_discard(long maxHashValue, long seed, char line):
-
-#     cdef bytes readname = line.split(b"\t")[3].rsplit(b"/")[
-#         0
-#     ]  # extract readname, remove everything after '/' (read pair if paired)
-
-#     if len(readname) < 2:
-#         raise ValueError(
-#             f"Readname length is {len(readname)}! Check fourth column of input files contains a valid readname."
-#         )
-
-#     cdef long hashInt = mmh3.hash64(readname, 10)[0]
-
-#     return hashInt > maxHashValue
-
 

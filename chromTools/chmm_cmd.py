@@ -9,6 +9,7 @@ import math
 import os
 import pathlib
 import time
+import sys
 
 import numba as nb
 import numpy as np
@@ -22,7 +23,7 @@ import chromTools.c_io
 
 def make_binary_data_from_bed(
     n, options
-):  # gridcontrol, sumgridcontrol, bpresentcontrol,
+):  
     """Binarize BED data, both directly and with control.
 
     :param n: File number.
@@ -102,14 +103,13 @@ def make_binary_data_from_bed(
             if len(szLine) < 2:
                 raise ValueError(f"Invalid line found in {options.szchromlengthfile}")
             chrom = szLine[0]
-            length = int(szLine[1])
             chroms.append(chrom)
             hmchrom[chrom] = len(chroms) - 1
-            lengths.append(length)
+            lengths.append(int(szLine[1]))
 
     ## encode to bytes for cython
     chmchrom = {y.encode("utf-8"): hmchrom.get(y) for y in hmchrom.keys()}
-    lenchroms = len(chroms)
+    lenchroms = len(chroms) # number of chromosomes
 
     # loads all the marks in hsmarks into the array marks and then sorts it
     nummarks = len(hsmarks)
@@ -118,6 +118,7 @@ def make_binary_data_from_bed(
     marks.sort()
 
     # generates a three dimensional array with each chromosome, the lengths of each chr divided by binsize, and the number of marks (always 1 in complete)
+    # cgrid is a regular np array with Dim 2 as the length of chromosome 1/binsize (longest) 
     cgrid = np.zeros((lenchroms, lengths[0] // nbinsize, nummarks), dtype=int)
     bpresentmarks = [False] * nummarks
 
@@ -135,10 +136,12 @@ def make_binary_data_from_bed(
     # ----------------------------------------
 
     for szcell in hscells:
-        print(f"{szcell}: start grid")
+        options.info(f"{szcell}: start grid")
         bpresent = [False] * lenchroms
         # loading data for the cell type
-        cgrid, bpresent, bpresentmarks = cload_grid(
+        #cgrid, bpresent, bpresentmarks = cload_grid(
+        grid, bpresent, bpresentmarks = cload_grid(
+            options.info,
             cgrid,
             bpresent,
             bpresentmarks,
@@ -153,12 +156,13 @@ def make_binary_data_from_bed(
             chmchrom,
             0,
             options.control,
+            lengths,
         )
-        print(f"{szcell}: end grid")
-        # once it comes out of load_grid return cgrid to correct size
-        grid = np.empty((lenchroms,), dtype=np.ndarray)
-        for ni in range(lenchroms):
-            grid[ni] = cgrid[ni][0 : (lengths[ni] // nbinsize)]
+
+        # once it comes out of load_grid return cgrid to correct size (2d lengths back to length of each chr)
+        # grid = np.empty((lenchroms,), dtype=np.ndarray)
+        # for ni in range(lenchroms):
+        #     grid[ni] = cgrid[ni][0 : (lengths[ni] // nbinsize)]
         # ensure bpresent is list of bools
         bpresent = list(map(bool, bpresent))
 
@@ -179,6 +183,7 @@ def make_binary_data_from_bed(
                 chmchrom,
                 options.npseudocountcontrol,
                 options.control,
+                lengths,
             )
             # once it comes out of load_grid return cgridcontrol to correct size
             for ni in range(lenchroms):
@@ -232,7 +237,7 @@ def make_binary_data_from_bed(
                         pw.write(f"{marks[nmark]}\t")
                     pw.write(f"{marks[nummarks_m1]}\n")
 
-                    for nbin in range(len(grid[nchrom])):
+                    for nbin in range(lengths[nchrom]//nbinsize):
                         for nmark in range(nummarks_m1):
                             if numcontrolmarks == 1:
                                 ncontrolval = sumgridcontrol[nchrom][nbin][0]
@@ -244,7 +249,7 @@ def make_binary_data_from_bed(
                                 pw.write("2\t")
                             elif (
                                 thresholds[nmark][ncontrolval]
-                                <= grid[nchrom][nbin][nmark]
+                                <= grid[nchrom, nbin, nmark]
                             ):
                                 pw.write("1\t")
                                 count += 1
@@ -262,7 +267,7 @@ def make_binary_data_from_bed(
                             pw.write("2\n")
                         elif (
                             thresholds[nummarks_m1][ncontrolval]
-                            <= grid[nchrom][nbin][nummarks_m1]
+                            <= grid[nchrom, nbin, nummarks_m1]
                         ):
                             pw.write("1\n")
                             count += 1
@@ -271,46 +276,21 @@ def make_binary_data_from_bed(
                             pw.write("0\n")
                             total += 1
     else:  ## if no control file
-        print(f"{hscells}: start threshold")
-        thresholds = determine_mark_thresholds_from_binned_data_array(
+        options.info(f"{hscells}: start threshold")
+        total, thresholds = determine_mark_thresholds_from_binned_data_array(
             grid,
             bpresent,
             options.dpoissonthresh,
             options.dfoldthresh,
             options.bcontainsthresh,
             options.dcountthresh,
+            lengths, 
+            nbinsize,
         )
-        print(f"{hscells}: end threshold, start writing")
-        for nchrom in range(lenchroms):
-            if bpresent[nchrom]:
-                szfile = os.path.join(
-                    options.szoutputbinarydir,
-                    szcell + "_" + chroms[nchrom] + "_binary.txt",
-                )
-                # print("Writing to file " + szfile)
-                with open(szfile, "w") as pw:
-                    pw.write(f"{szcell}\t{chroms[nchrom]}\n")
-                    for nmark in range(len(marks) - 1):
-                        pw.write(f"{marks[nmark]}\t")
-                    pw.write(f"{marks[nummarks_m1]}\n")
-                    for nbin in range(len(grid[nchrom])):
-                        for nmark in range(nummarks_m1):
-                            if not bpresentmarks[nmark]:
-                                pw.write("2\t")
-                            elif thresholds[nmark] <= grid[nchrom][nbin][nmark]:
-                                pw.write("1\t")
-                            else:
-                                pw.write("0\t")
-                        if not bpresentmarks[nummarks_m1]:
-                            pw.write("2\n")
-                        elif thresholds[nummarks_m1] <= grid[nchrom][nbin][nummarks_m1]:
-                            pw.write("1\n")
-                            count += 1
-                            total += 1
-                        else:
-                            pw.write("0\n")
-                            total += 1
-    print(f"{hscells}: end write")
+
+        # extract number of bins in grid which are greater than threshold
+        count = np.sum(thresholds[nummarks_m1] <= grid)
+
     return count, total
 
 
@@ -318,6 +298,7 @@ def make_binary_data_from_bed(
 
 
 def cload_grid(
+    info,
     grid,
     bpresent,
     bpresentmarks,
@@ -332,6 +313,7 @@ def cload_grid(
     hmchrom,
     ninitval,
     bcontrol,
+    lengths,
 ):
     """Converts read level data for a cell into integer count information.
 
@@ -390,7 +372,7 @@ def cload_grid(
     # going through all the mark files in each cell type
     for nmark in range(nummarks):
         alfiles = hmfiles.get(f"{szcell}\t{marks[nmark]}")
-
+        info(f"alfiles is {alfiles}")
         if alfiles is None:
             if bcontrol:
                 print(
@@ -405,9 +387,8 @@ def cload_grid(
             if not bcontrol:
                 # slight efficiency improvement here in v1.04
                 for nchrom in range(len(grid)):
-                    numbins = len(grid[nchrom])
-                    for nbin in range(numbins):
-                        grid[nchrom][nbin][nmark] = -1
+                    for nbin in range(lengths[nchrom]//nbinsize):
+                        grid[nchrom, nbin, nmark] = -1
         else:
             bpresentmarks[nmark] = True
             for szfile in alfiles:
@@ -430,7 +411,7 @@ def cload_grid(
 
 
 def determine_mark_thresholds_from_binned_data_array(
-    grid, bpresent, dpoissonthresh, dfoldthresh, bcontainsthresh, dcountthresh
+    grid, bpresent, dpoissonthresh, dfoldthresh, bcontainsthresh, dcountthresh, lengths, nbinsize
 ):
     """Determines the Poisson cutoffs based on the provided data.
 
@@ -476,10 +457,8 @@ def determine_mark_thresholds_from_binned_data_array(
             sumtags[0] += np.sum(
                 grid[nchrom]
             )  ## would need to be adapted if nummarks > 1
-            ntotallocs += len(grid[nchrom])
+            ntotallocs += lengths[nchrom] // nbinsize
 
-    print(f"sumtags is {sumtags}")
-    print(f"ntotallocs is {ntotallocs}")
     for nj in range(len(sumtags)):
         dlambda = sumtags[nj] / ntotallocs
         dcum, nthresh, dlogfactorial = 0, 0, 0
@@ -488,14 +467,14 @@ def determine_mark_thresholds_from_binned_data_array(
             dprob = math.exp(math.log(dlambda) * nthresh - dlambda - dlogfactorial)
             dcum += dprob
             nthresh += 1
+            
             dlogfactorial += math.log(nthresh)
 
         if bcontainsthresh:
             nthresh -= 1
 
         thresholds[nj] = max(int(dfoldthresh * dlambda), nthresh, int(dcountthresh))
-
-    return thresholds
+    return ntotallocs, thresholds
 
 
 def determine_mark_thresholds_from_binned_data_array_against_control(
