@@ -247,17 +247,10 @@ def subsample(n, options, total):
 
     """
     proportion = (options.increment * n) / total
-    # outfile = pathlib.Path(options.subdir / f"subsampled.{n}.bed")
+
     reads = 0
     a = params(proportion)
-    # with open(outfile, "w") as outf:
-    #     with open(pathlib.Path(options.subdir / "subsampled.0.bed"), "r") as f:
-    #         for line in f:
-    #             if discard(a, options.seed, line):
-    #                 continue
-    #             else:
-    #                 outf.write(line)
-    #                 reads += 1
+
     file_path = os.path.join(options.subdir, "subsampled.0.bed")
     outfile = os.path.join(options.subdir, f"subsampled.{n}.bed")
     reads = chromTools.c_io.c_subsample(file_path, outfile, a, options.seed)

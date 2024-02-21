@@ -158,7 +158,7 @@ def make_binary_data_from_bed(
             options.control,
             lengths,
         )
-        options.info(f"{szcell}: end grid")
+
         # once it comes out of load_grid return cgrid to correct size (2d lengths back to length of each chr)
         # grid = np.empty((lenchroms,), dtype=np.ndarray)
         # for ni in range(lenchroms):
@@ -287,13 +287,10 @@ def make_binary_data_from_bed(
             lengths, 
             nbinsize,
         )
-        options.info(f"{hscells}: end threshold, start writing")
 
         # extract number of bins in grid which are greater than threshold
         count = np.sum(thresholds[nummarks_m1] <= grid)
-        print(f"new count is {count}")
-        
-    options.info(f"{hscells}: end write")
+
     return count, total
 
 
@@ -460,10 +457,8 @@ def determine_mark_thresholds_from_binned_data_array(
             sumtags[0] += np.sum(
                 grid[nchrom]
             )  ## would need to be adapted if nummarks > 1
-            ntotallocs += lengths[nchrom]//nbinsize
+            ntotallocs += lengths[nchrom] // nbinsize
 
-    print(f"sumtags is {sumtags}")
-    print(f"ntotallocs is {ntotallocs}")
     for nj in range(len(sumtags)):
         dlambda = sumtags[nj] / ntotallocs
         dcum, nthresh, dlogfactorial = 0, 0, 0
@@ -472,13 +467,13 @@ def determine_mark_thresholds_from_binned_data_array(
             dprob = math.exp(math.log(dlambda) * nthresh - dlambda - dlogfactorial)
             dcum += dprob
             nthresh += 1
+            
             dlogfactorial += math.log(nthresh)
 
         if bcontainsthresh:
             nthresh -= 1
 
         thresholds[nj] = max(int(dfoldthresh * dlambda), nthresh, int(dcountthresh))
-    print(thresholds)
     return ntotallocs, thresholds
 
 

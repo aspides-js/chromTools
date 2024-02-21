@@ -113,76 +113,7 @@ cpdef read_to_grid(file_path,
 
 # --------------------------------------------------------------------------------#                         
 
-cdef int convert_fourth_ele_to_hash(char *remaining_line):
-    # memory address is remaining_line
-    # *remaining_line is used to access the value (character) that the pointer is pointing to.
-
-    #cython_remaining_line[0] accesses the first character of the Cython char array or memoryview.
-    #&cython_remaining_line[0] retrieves the memory address of the first character in the Cython char array or memoryview.
-    #cdef char *start_pointer = remaining_line
-    cdef int chars_in_ele = 0
-
-    while (remaining_line[chars_in_ele] != b'\0'):
-        chars_in_ele+=1
-        if (remaining_line[chars_in_ele] == b'/' or remaining_line[chars_in_ele] == b'\t'):
-            break
-    #cdef char[:chars_in_ele] start_pointer = &remaining_line[0] doesnt worj 
-    cdef char* start_pointer = <char *> malloc(chars_in_ele + 1)  # Allocate memory, +1 for null-termination
-
-    # Copy characters into the buffer
-    for i in range(chars_in_ele):
-        start_pointer[i] = remaining_line[i]
-
-    # Null-terminate the buffer
-    start_pointer[chars_in_ele] = b'\0'
-
-    #while (remaining_line != b'\0'):
-    #    chars_in_ele+=1
-    #    if (remaining_line == b'/' or remaining_line == b'+'):
-    #        break
-    #    else:
-    #        remaining_line+=1
-
-    #// Here you would call the murmur hash with key being 'start_pointer' and len being chars_in_ele
-    #// Hopefully should work
-    #// Else, here it is copied into a seperate char array
-    cdef int hashInt = murmurhash(start_pointer, chars_in_ele, 10)
-    #free(start_pointer)
-    #free(remaining_line)
-    #cdef char *fourth_ele = <char *>calloc(chars_in_ele + 1, sizeof(char))
-    #fourth_ele = calloc(chars_in_ele + 1, sizeof(char))
-    #strncpy(fourth_ele, start_pointer, chars_in_ele)
-    #fourth_ele[chars_in_ele - 1] = b'\0'
-    return hashInt
-
-
-
-
-
-cdef int convert_line_to_hash(char *line):
-    cdef int str_len = strlen(line)
-    cdef char chr
-    cdef int delim_counter = 0
-    cdef int hashInt
-
-    for i in range(str_len):
-        chr = line[i]
-        if (chr == b"\t"):
-            delim_counter+=1
-        if (delim_counter == 3):
-            # Assuming 'line' is a Cython memoryview of characters
-            #next_char_ptr = &line[i + 1]
-
-            # Access the character at the next position using the pointer
-            #next_char = next_char_ptr[0]
-            #fourth_ele = convert_fourth_ele_to_hash(next_char)
-            #fourth_ele = convert_fourth_ele_to_hash(&line[i + 1])
-            hashInt = convert_fourth_ele_to_hash(&line[i + 1])
-            break
-    return hashInt 
-
-
-cpdef int c_subsample(str file_path, str outf_path, long a, long seed):
+cpdef int c_subsample(str file_path, str outf_path, int a, int seed):
     """Generate a random hash from readname using seed. If number above proportional cut-off (True), discard read.
 
     Args:
@@ -197,19 +128,26 @@ cpdef int c_subsample(str file_path, str outf_path, long a, long seed):
     cdef FILE *file = fopen(file_path.encode(), "r")
     cdef FILE *outf = fopen(outf_path.encode(), "w")
 
-    cdef char* fourth_ele 
+    cdef char* c_readname 
     cdef bytes readname
-    cdef long hashInt
+    cdef int hashInt, c_readname_len
 
     # Read the file line by line    
     cdef char line[1024]
     cdef int reads = 0
-    print("test print", outf_path)
     while fgets(line, sizeof(line), file) is not NULL:
-        #readname = line.split(b"\t")[3].rsplit(b"/")[0]
-        hashInt = convert_line_to_hash(line)
-        #hashInt = mmh3.hash(readname, seed)
-        if hashInt > a: #c_discard(a, seed line):
+        # extract readname from line (4th element, strip indication of readnames 1 and 2)
+        readname = line.split(b"\t")[3].rsplit(b"/")[0]
+        
+        # convert to c-type string
+        c_readname = readname
+        c_readname_len = strlen(c_readname)
+
+        # use c function murmurhash to hash string
+        hashInt = murmurhash(c_readname, c_readname_len, seed)
+        
+        # if int is above threshold then skip, otherwise write
+        if hashInt > a: 
             continue
         else:
             fwrite(line, sizeof(char), len(line), outf)
@@ -217,21 +155,5 @@ cpdef int c_subsample(str file_path, str outf_path, long a, long seed):
 
     fclose(file)
     fclose(outf)
-    print("done", outf_path)
     return reads    
 
-
-# cdef c_discard(long maxHashValue, long seed, char line):
-
-#     cdef bytes readname = line.split(b"\t")[3].rsplit(b"/")[
-#         0
-#     ]  # extract readname, remove everything after '/' (read pair if paired)
-
-#     if len(readname) < 2:
-#         raise ValueError(
-#             f"Readname length is {len(readname)}! Check fourth column of input files contains a valid readname."
-#         )
-
-#     cdef long hashInt = mmh3.hash64(readname, 10)[0]
-
-#     return hashInt > maxHashValue
