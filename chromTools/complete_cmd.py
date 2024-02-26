@@ -38,7 +38,6 @@ def run(options):
     start_time, options.start_time = time.time(), time.time()
     timestr = time.strftime("%Y%m%d-%H%M%S")
 
-    options.info("RUNNING NEW BRANCH")
     benchmark(options.outdir, f"N={len(options.files)}", "TIME", timestr)
 
     ## Concatenating
