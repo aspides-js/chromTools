@@ -120,7 +120,6 @@ def make_binary_data_from_bed(
     # generates a three dimensional array with each chromosome, the lengths of each chr divided by binsize, and the number of marks (always 1 in complete)
     # cgrid is a regular np array with Dim 2 as the length of chromosome 1/binsize (longest) 
     cgrid = np.zeros((nchroms, lengths[0] // nbinsize, nummarks), dtype=int)
-    bpresentmarks = [False] * nummarks
 
     # set variables for control data
     # gridcontrol - generates a three dimensional array with each chromosome, the lengths of the largest chr divided by binsize, and the number of marks (always 1 in complete)
@@ -129,7 +128,6 @@ def make_binary_data_from_bed(
         #gridcontrol = np.empty((nchroms,), dtype=np.ndarray)
         sumgridcontrol = np.zeros((nchroms, lengths[0] // nbinsize, nummarks), dtype=int)
         bpresentcontrol = [False] * nchroms
-        bpresentmarkscontrol = [False] * nummarks
         hmfilescontrol = {f"{szcell}\t{szmark}": ["subsampled.ctrl.bed"]}
 
     # ----------------------------------------
@@ -138,12 +136,11 @@ def make_binary_data_from_bed(
         options.info(f"{szcell}: start grid")
         bpresent = [False] * nchroms
         # loading data for the cell type
-        #cgrid, bpresent, bpresentmarks = cload_grid(
-        grid, bpresent, bpresentmarks = cload_grid(
+        #cgrid, bpresent,  = cload_grid(
+        grid, bpresent = cload_grid(
             options.info,
             cgrid,
             bpresent,
-            bpresentmarks,
             marks,
             options.nshift,
             nbinsize,
@@ -167,11 +164,10 @@ def make_binary_data_from_bed(
 
         if options.control:
             # we have control data loading cell type data for that
-            gridcontrol, bpresentcontrol, bpresentmarkscontrol = cload_grid(
+            gridcontrol, bpresentcontrol = cload_grid(
                 options.info,
                 gridcontrol,
                 bpresentcontrol,
-                bpresentmarkscontrol,
                 marks,
                 options.nshift,
                 nbinsize,
@@ -270,7 +266,6 @@ def cload_grid(
     info,
     grid,
     bpresent,
-    bpresentmarks,
     marks,
     nshift,
     nbinsize,
@@ -352,14 +347,12 @@ def cload_grid(
                     f"Warning did not find data for {szcell} {marks[nmark]} treating as missing"
                 )
 
-            bpresentmarks[nmark] = False
             if not bcontrol:
                 # slight efficiency improvement here in v1.04
                 for nchrom in range(len(grid)):
                     for nbin in range(lengths[nchrom]//nbinsize):
                         grid[nchrom, nbin, nmark] = -1
         else:
-            bpresentmarks[nmark] = True
             for szfile in alfiles:
                 grid, bpresent = chromTools.c_io.read_to_grid(
                     os.path.join(szmarkdir, szfile),
@@ -376,7 +369,7 @@ def cload_grid(
                     grid,
                     bpresent,
                 )
-    return grid, bpresent, bpresentmarks
+    return grid, bpresent
 
 
 def determine_mark_thresholds_from_binned_data_array(
