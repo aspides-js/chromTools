@@ -33,8 +33,6 @@ def make_binary_data_from_bed(
     :type options: object
     :param control: If not False (default), control contains a list of control files.
     :type control: bool or list
-    :param szchromfile: The name of the file containing chromosome information. It is a two-column file with the first column representing the chromosome and the second column representing the chromosome length.
-    :type szchromfile: str
     :param szcontroldir: The directory containing the bed files with the control data. If set to None, no control data is used.
     :type szcontroldir: str
     :param szchromlengthfile: The name of the two-column file containing chromosome and strand information.
@@ -45,18 +43,10 @@ def make_binary_data_from_bed(
     :type nflankwidthcontrol: int
     :param nshift: The number of bases a read should be shifted in the 5' to 3' direction of a read.
     :type nshift: int
-    :param bcenterinterval: If True, the center of the read is used instead of shifting if the read has already been extended.
-    :type bcenterinterval: bool
     :param noffsetleft: The amount that should be subtracted from the left coordinate to make it 0-based inclusive.
     :type noffsetleft: int
     :param noffsetright: The amount that should be subtracted from the right coordinate to make it 0-based inclusive.
     :type noffsetright: int
-    :param szoutputsignaldir: If not None, the intermediate signal data will be printed to this directory.
-    :type szoutputsignaldir: str
-    :param szoutputbinarydir: The directory where the binarized data will be printed.
-    :type szoutputbinarydir: str
-    :param szoutputcontroldir: If not None, the intermediate control signal data will be printed to this directory.
-    :type szoutputcontroldir: str
     :param dpoissonthresh: The tail probability threshold on the Poisson distribution.
     :type dpoissonthresh: float
     :param dfoldthresh: The fold threshold required for a present call.
@@ -67,15 +57,8 @@ def make_binary_data_from_bed(
     :type npseudocountcontrol: int
     :param nbinsize: The number of base pairs in a bin
     :type nbinsize: int
-    :param szcolfields: A comma-delimited string indicating the 0-based columns of the chromosome, start, end,
-                        and optionally strand position. If set to None, the default values are used (0, 1, 2) for
-                        chromosome, start, and end, with the strand as the sixth column or the last column if fewer
-                        columns are present.
-    :type szcolfields: str
     :param dcountthresh: The absolute signal threshold for a present call.
     :type dcountthresh: float
-    :param bbinarizebam: If True, reads files as BAM files; otherwise, reads files as BED files.
-    :type bbinarizebam: bool
 
     :raises ValueError: Invalid line found in the chromosome length file if fewer than two cols found
 
@@ -118,14 +101,13 @@ def make_binary_data_from_bed(
     marks.sort()
 
     # generates a three dimensional array with each chromosome, the lengths of each chr divided by binsize, and the number of marks (always 1 in complete)
-    # cgrid is a regular np array with Dim 2 as the length of chromosome 1/binsize (longest) 
-    cgrid = np.zeros((nchroms, lengths[0] // nbinsize, nummarks), dtype=int)
+    # grid is a regular np array with Dim 2 as the length of chromosome 1/binsize (longest) 
+    grid = np.zeros((nchroms, lengths[0] // nbinsize, nummarks), dtype=int)
 
     # set variables for control data
     # gridcontrol - generates a three dimensional array with each chromosome, the lengths of the largest chr divided by binsize, and the number of marks (always 1 in complete)
     if options.control:
         gridcontrol = np.ones((nchroms, lengths[0] // nbinsize, nummarks), dtype=int)
-        #gridcontrol = np.empty((nchroms,), dtype=np.ndarray)
         sumgridcontrol = np.zeros((nchroms, lengths[0] // nbinsize, nummarks), dtype=int)
         bpresentcontrol = [False] * nchroms
         hmfilescontrol = {f"{szcell}\t{szmark}": ["subsampled.ctrl.bed"]}
@@ -135,11 +117,11 @@ def make_binary_data_from_bed(
     for szcell in hscells:
         options.info(f"{szcell}: start grid")
         bpresent = [False] * nchroms
+
         # loading data for the cell type
-        #cgrid, bpresent,  = cload_grid(
         grid, bpresent = cload_grid(
             options.info,
-            cgrid,
+            grid,
             bpresent,
             marks,
             options.nshift,
@@ -155,10 +137,6 @@ def make_binary_data_from_bed(
             lengths,
         )
 
-        # once it comes out of load_grid return cgrid to correct size (2d lengths back to length of each chr)
-        # grid = np.empty((nchroms,), dtype=np.ndarray)
-        # for ni in range(nchroms):
-        #     grid[ni] = cgrid[ni][0 : (lengths[ni] // nbinsize)]
         # ensure bpresent is list of bools
         bpresent = list(map(bool, bpresent))
 
@@ -188,7 +166,6 @@ def make_binary_data_from_bed(
     count, total = 0, 0  # number of marks & total bins in each chr
     if options.control:
         # binarization will be based on control data
-        print("windowsumgrid_numba")
         sumgridcontrol = window_sum_grid(gridcontrol, 
                                         sumgridcontrol, 
                                         options.nflankwidthcontrol, 
@@ -211,16 +188,15 @@ def make_binary_data_from_bed(
 
         # extract number of bins in grid that are greater than threshold
         # sumgridcontrol is used as an index of threshold
-
         # create bool array for chr present in mark and control
         bpresentboth = [a==1 and b==1 for a, b in zip(bpresent, bpresentcontrol)]
 
-        # reduce grid and sumgridcontrol to only those chr present for both mark and control
+        # reduce grid and sumgridcontrol to only those chrm present for both mark and control
         grid = grid[bpresentboth]
         sumgridcontrol = sumgridcontrol[bpresentboth]
         filt_lengths = list(compress(lengths, bpresentboth))
 
-        # Flatten the indices grid and thresholds vector and reshape values into comparable grid
+        # create a grid where each value is the threshold for that position (from sumgridcontrol indices)
         flat_indices = sumgridcontrol.flatten()
         flat_values = np.asarray(thresholds[0])[flat_indices]
         threshold_grid = flat_values.reshape(sumgridcontrol.shape)
@@ -237,7 +213,6 @@ def make_binary_data_from_bed(
         total = sum([x // nbinsize for x in filt_lengths])
 
     else:  ## if no control file
-        options.info(f"{hscells}: start threshold")
         total, thresholds = determine_mark_thresholds_from_binned_data_array(
             grid,
             bpresent,
@@ -248,13 +223,10 @@ def make_binary_data_from_bed(
             lengths, 
             nbinsize,
         )
-
         # extract number of bins in grid which are greater than threshold
         ## this replaces all of the old functionality writing to a file
         ## total now comes from determine_mark_thres
         count = np.sum(thresholds[nummarks_m1] <= grid)
-    options.info(f"ctrol new count is {count}")
-    options.info(f"ctrol new total is {total}")
 
     return count, total
 
@@ -288,8 +260,6 @@ def cload_grid(
     :type grid: numpy.ndarray
     :param bpresent: Indicates if there is a read for a chromosome with an index in hmchrom.
     :type bpresent: list
-    :param bpresentmark: Indicates if the mark is present in the cell type.
-    :type bpresentmark: list
     :param marks: Contains the names of the header marks.
     :type marks: list
     :param nshift: The number of bases a read should be shifted in the 5' to 3' direction of a read.
@@ -312,6 +282,8 @@ def cload_grid(
     :type ninitval: int
     :param bcontrol: if True, data is control data
     :type bcontrol: bool
+    :param lengths: lengths of all chroms
+    :type lengths: list
 
     :return: grid (numpy.ndarray): The updated grid with the read counts.
 
@@ -497,7 +469,6 @@ def determine_mark_thresholds_from_binned_data_array_against_control(
 
     hscontrol_np = np.empty(0, dtype=int)
     for nchrom in range(len(grid)):
-        bin_len = lengths[nchrom] // nbinsize
         if bpresent[nchrom] and bpresentcontrol[nchrom]:
             sumtags[0] += np.sum(grid[nchrom])
             sumtagscontrol[0] += np.sum(sumgridcontrol[nchrom][0:lengths[nchrom] // nbinsize])
